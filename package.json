@@ -1,0 +1,48 @@
+{
+  "name": "portal-auditorias-workspace",
+  "version": "1.0.0",
+  "description": "Portal de Auditorías Técnicas - Monorepo Fullstack",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server",
+    "scripts"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "build": "npm run build --workspace=client && npm run build --workspace=server",
+    "test": "npm test --workspaces",
+    "claude:generate": "node scripts/claude-md-generator.js",
+    "claude:generate:all": "node scripts/claude-md-generator.js --all",
+    "claude:generate:domain": "node scripts/claude-md-generator.js --domain",
+    "claude:validate": "node scripts/claude-md-validator.js",
+    "claude:rebuild": "npm run claude:generate:all && npm run claude:validate",
+    "precommit": "npm run claude:generate && npm run claude:validate",
+    "setup:dev": "bash scripts/setup-dev.sh",
+    "deploy": "bash scripts/deploy.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "glob": "^10.3.10",
+    "lodash": "^4.17.21",
+    "chroma-js": "^2.4.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "keywords": [
+    "auditorias",
+    "call-center",
+    "etl",
+    "ia",
+    "ollama",
+    "react",
+    "nodejs",
+    "mysql"
+  ],
+  "author": "Portal Auditorías Team",
+  "license": "MIT"
+}

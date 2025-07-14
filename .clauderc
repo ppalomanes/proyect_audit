@@ -1,0 +1,110 @@
+{
+  "project": {
+    "name": "Portal de Auditorías Técnicas",
+    "version": "1.0.0",
+    "description": "Portal para automatizar auditorías técnicas de proveedores de call center",
+    "architecture": "monorepo-fullstack-domain-driven"
+  },
+  "claude_md": {
+    "entry_point": "PROJECT_OVERVIEW.md",
+    "auto_generation": {
+      "enabled": true,
+      "triggers": ["*.js", "*.jsx", "*.ts", "*.tsx"],
+      "exclude_patterns": ["node_modules/**", "dist/**", "build/**"],
+      "update_frequency": "on_change"
+    },
+    "context_management": {
+      "max_context_files": 5,
+      "fragment_size": 1000,
+      "overlap_tokens": 200,
+      "priority_domains": [
+        "auditorias",
+        "etl", 
+        "ia",
+        "auth"
+      ]
+    },
+    "validation": {
+      "enabled": true,
+      "require_all_domains": true,
+      "min_coverage_percentage": 90,
+      "sync_with_code": true
+    }
+  },
+  "rag_configuration": {
+    "enabled": false,
+    "embedding_model": "text-embedding-3-small",
+    "vector_database": "pinecone",
+    "chunk_strategy": "semantic",
+    "retrieval_k": 5
+  },
+  "development": {
+    "mode": "domain-driven",
+    "test_coverage_integration": true,
+    "documentation_sync": true,
+    "ci_cd_integration": true
+  },
+  "domains": {
+    "auth": {
+      "priority": "high",
+      "files": [
+        "/server/domains/auth/Claude.md",
+        "/client/src/domains/auth/Claude.md"
+      ],
+      "dependencies": ["shared/middleware", "shared/utils"]
+    },
+    "auditorias": {
+      "priority": "critical",
+      "files": [
+        "/server/domains/auditorias/Claude.md"
+      ],
+      "dependencies": ["etl", "ia", "notifications", "chat"]
+    },
+    "etl": {
+      "priority": "high",
+      "files": [
+        "/server/domains/etl/Claude.md",
+        "/client/src/domains/etl/Claude.md"
+      ],
+      "dependencies": ["jobs", "ia"]
+    },
+    "ia": {
+      "priority": "high",
+      "files": [
+        "/server/domains/ia/Claude.md",
+        "/client/src/domains/ia-scoring/Claude.md"
+      ],
+      "dependencies": ["ollama-models"]
+    },
+    "chat": {
+      "priority": "medium",
+      "files": [
+        "/server/domains/chat/Claude.md",
+        "/client/src/domains/chat/Claude.md"
+      ],
+      "dependencies": ["auth", "notifications"]
+    },
+    "notifications": {
+      "priority": "medium",
+      "files": [
+        "/server/domains/notifications/Claude.md"
+      ],
+      "dependencies": ["auth"]
+    },
+    "entities": {
+      "priority": "medium",
+      "files": [
+        "/server/domains/entities/Claude.md"
+      ],
+      "dependencies": ["auth"]
+    },
+    "dashboards": {
+      "priority": "medium",
+      "files": [
+        "/server/domains/dashboards/Claude.md",
+        "/client/src/domains/dashboards/Claude.md"
+      ],
+      "dependencies": ["auth", "auditorias"]
+    }
+  }
+}

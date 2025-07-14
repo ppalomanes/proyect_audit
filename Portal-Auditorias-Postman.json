@@ -1,0 +1,299 @@
+{
+	"info": {
+		"_postman_id": "12345678-1234-1234-1234-123456789abc",
+		"name": "Portal Auditorías Técnicas - Testing",
+		"description": "Endpoints para testing del Portal de Auditorías Técnicas con IA local",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12345678"
+	},
+	"item": [
+		{
+			"name": "1. Health Checks",
+			"item": [
+				{
+					"name": "System Health Check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has status field\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('status');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"health"
+							]
+						},
+						"description": "Verifica el estado general del sistema y servicios externos"
+					},
+					"response": []
+				},
+				{
+					"name": "IA Health Check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has ollama status\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('status');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/ia/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"ia",
+								"health"
+							]
+						},
+						"description": "Verifica el estado específico de Ollama y modelos IA"
+					},
+					"response": []
+				},
+				{
+					"name": "IA Metrics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has ia_metrics\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('ia_metrics');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/ia/metrics",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"ia",
+								"metrics"
+							]
+						},
+						"description": "Obtiene métricas de procesamiento de IA"
+					},
+					"response": []
+				},
+				{
+					"name": "Test 404 Endpoint",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"Response has error message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('error');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/test",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"test"
+							]
+						},
+						"description": "Prueba manejo de endpoints no existentes (debería retornar 404)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. IA Analysis (En Desarrollo - 501)",
+			"item": [
+				{
+					"name": "Analyze Document",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 501 (Not Implemented)\", function () {",
+									"    pm.response.to.have.status(501);",
+									"});",
+									"",
+									"pm.test(\"Response indicates function in development\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.error).to.include('desarrollo');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"documento_id\": 1,\n  \"criterios_scoring\": [],\n  \"opciones\": {\n    \"tipo_analisis\": \"document_compliance\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/ia/analyze/document",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"ia",
+								"analyze",
+								"document"
+							]
+						},
+						"description": "Análisis de documentos PDF (función en desarrollo - retorna 501)"
+					},
+					"response": []
+				},
+				{
+					"name": "Analyze Image",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 501 (Not Implemented)\", function () {",
+									"    pm.response.to.have.status(501);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"imagen_id\": 1,\n  \"criterios_scoring\": [],\n  \"opciones\": {\n    \"tipo_analisis\": \"image_analysis\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/ia/analyze/image",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"ia",
+								"analyze",
+								"image"
+							]
+						},
+						"description": "Análisis de imágenes con Moondream (función en desarrollo - retorna 501)"
+					},
+					"response": []
+				},
+				{
+					"name": "Batch Analysis",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"items\": [\n    {\n      \"id\": 1,\n      \"type\": \"documento\"\n    },\n    {\n      \"id\": 2,\n      \"type\": \"imagen\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/ia/analyze/batch",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"ia",
+								"analyze",
+								"batch"
+							]
+						},
+						"description": "Análisis batch de múltiples elementos (función en desarrollo - retorna 501)"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3001",
+			"type": "string"
+		}
+	]
+}

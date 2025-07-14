@@ -1,0 +1,27 @@
+
+DOCUMENTO DE AUDITORÍA TÉCNICA
+==============================
+
+INFORMACIÓN DEL PROVEEDOR:
+Nombre: Call Center Solutions S.A.
+Ubicación: Madrid, España
+Servicios: Atención al cliente, soporte técnico
+
+INFRAESTRUCTURA TÉCNICA:
+- Servidores: Dell PowerEdge R740
+- Conexión: Fibra óptica 1Gbps
+- Backup: Cada 4 horas automático
+- Antivirus: Windows Defender actualizado
+
+PROCEDIMIENTOS:
+1. Protocolo de atención estándar
+2. Escalamiento a supervisores
+3. Documentación de casos
+4. Seguimiento post-resolución
+
+CUMPLIMIENTO:
+- ISO 27001: Certificado vigente
+- GDPR: Políticas implementadas
+- Auditorías: Trimestrales
+
+Este documento cumple con los estándares requeridos.

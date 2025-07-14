@@ -1,0 +1,203 @@
+{
+  "info": {
+    "name": "Portal Auditorías Técnicas - Testing",
+    "description": "Endpoints para testing del Portal de Auditorías Técnicas con IA local",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3001",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health Checks",
+      "item": [
+        {
+          "name": "System Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health"]
+            },
+            "description": "Verifica el estado general del sistema y servicios externos"
+          }
+        },
+        {
+          "name": "IA Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/ia/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ia", "health"]
+            },
+            "description": "Verifica el estado específico de Ollama y modelos IA"
+          }
+        },
+        {
+          "name": "IA Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/ia/metrics",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ia", "metrics"]
+            },
+            "description": "Obtiene métricas de procesamiento de IA"
+          }
+        },
+        {
+          "name": "Test 404 Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/test",
+              "host": ["{{base_url}}"],
+              "path": ["api", "test"]
+            },
+            "description": "Prueba manejo de endpoints no existentes (debería retornar 404)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. IA Analysis (En Desarrollo)",
+      "item": [
+        {
+          "name": "Analyze Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documento_id\": 1,\n  \"criterios_scoring\": [],\n  \"opciones\": {\n    \"tipo_analisis\": \"document_compliance\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ia/analyze/document",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ia", "analyze", "document"]
+            },
+            "description": "Análisis de documentos PDF (función en desarrollo - retorna 501)"
+          }
+        },
+        {
+          "name": "Analyze Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"imagen_id\": 1,\n  \"criterios_scoring\": [],\n  \"opciones\": {\n    \"tipo_analisis\": \"image_analysis\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ia/analyze/image",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ia", "analyze", "image"]
+            },
+            "description": "Análisis de imágenes con Moondream (función en desarrollo - retorna 501)"
+          }
+        },
+        {
+          "name": "Batch Analysis",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"id\": 1,\n      \"type\": \"documento\"\n    },\n    {\n      \"id\": 2,\n      \"type\": \"imagen\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ia/analyze/batch",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ia", "analyze", "batch"]
+            },
+            "description": "Análisis batch de múltiples elementos (función en desarrollo - retorna 501)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Jobs y Status",
+      "item": [
+        {
+          "name": "Get Job Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/ia/jobs/test_job_123/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ia", "jobs", "test_job_123", "status"]
+            },
+            "description": "Obtiene estado de job de procesamiento (función en desarrollo - retorna 501)"
+          }
+        },
+        {
+          "name": "Get Analysis Results",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/ia/analysis/123?incluir_detalles=true",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ia", "analysis", "123"],
+              "query": [
+                {
+                  "key": "incluir_detalles",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Obtiene resultados de análisis específico (función en desarrollo - retorna 501)"
+          }
+        },
+        {
+          "name": "Configure Criteria",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"auditoria_id\": 1,\n  \"criterios\": [\n    {\n      \"nombre\": \"Criterio de prueba\",\n      \"descripcion\": \"Descripción del criterio de prueba\",\n      \"peso\": 1.0\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ia/criteria",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ia", "criteria"]
+            },
+            "description": "Configura criterios de scoring personalizados (función en desarrollo - retorna 501)"
+          }
+        }
+      ]
+    }
+  ]
+}
