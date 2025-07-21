@@ -142,7 +142,7 @@ app.get(
 );
 
 // === REGISTRO DE RUTAS ===
-app.use("/api/ia", require("./domains/ia/ia.routes"));
+
 // Rutas IA (principal funcionalidad)
 try {
   const iaRoutes = require("./domains/ia/ia.routes");
@@ -150,6 +150,24 @@ try {
   console.log("✅ Rutas IA registradas exitosamente");
 } catch (error) {
   console.error("❌ Error registrando rutas IA:", error.message);
+}
+
+// Rutas ETL (procesamiento de parque informático)
+try {
+  const etlRoutes = require("./domains/etl/etl.routes");
+  app.use("/api/etl", etlRoutes);
+  console.log("✅ Rutas ETL registradas exitosamente");
+} catch (error) {
+  console.error("❌ Error registrando rutas ETL:", error.message);
+}
+
+// Rutas AUDITORIAS (workflow de auditoría)
+try {
+  const auditoriasRoutes = require("./domains/auditorias/auditorias.routes");
+  app.use("/api/auditorias", auditoriasRoutes);
+  console.log("✅ Rutas AUDITORIAS registradas exitosamente");
+} catch (error) {
+  console.error("❌ Error registrando rutas AUDITORIAS:", error.message);
 }
 
 // === RUTAS DE ARCHIVOS ESTÁTICOS ===
@@ -176,8 +194,12 @@ app.use("*", (req, res) => {
     timestamp: new Date().toISOString(),
     available_endpoints: [
       "GET /api/health",
-      "GET /api/ia/health",
+      "GET /api/ia/health", 
       "GET /api/ia/metrics",
+      "GET /api/etl/health",
+      "GET /api/etl/version",
+      "GET /api/etl/schema",
+      "GET /api/auditorias/health"
     ],
   });
 });
@@ -215,7 +237,11 @@ const server = app.listen(PORT, () => {
   console.log("   GET  /api/health - Estado del sistema");
   console.log("   GET  /api/ia/health - Estado de Ollama");
   console.log("   GET  /api/ia/metrics - Métricas de IA");
-  console.log("   POST /api/ia/analyze/* - Análisis IA (en desarrollo)\n");
+  console.log("   POST /api/ia/analyze/* - Análisis IA (en desarrollo)");
+  console.log("   GET  /api/etl/health - Estado del módulo ETL");
+  console.log("   GET  /api/etl/version - Versión del módulo ETL");
+  console.log("   GET  /api/etl/schema - Esquema normalizado");
+  console.log("   POST /api/etl/process - Procesar archivo parque informático\n");
 });
 
 // === GESTIÓN DE SHUTDOWN GRACEFUL ===

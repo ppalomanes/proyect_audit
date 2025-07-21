@@ -18,7 +18,9 @@
     "claude:generate:all": "node scripts/claude-md-generator.js --all",
     "claude:generate:domain": "node scripts/claude-md-generator.js --domain",
     "claude:validate": "node scripts/claude-md-validator.js",
+    "claude:test": "node scripts/claude-md-tester.js",
     "claude:rebuild": "npm run claude:generate:all && npm run claude:validate",
+    "claude:health": "npm run claude:test && npm run claude:validate",
     "precommit": "npm run claude:generate && npm run claude:validate",
     "setup:dev": "bash scripts/setup-dev.sh",
     "deploy": "bash scripts/deploy.sh"

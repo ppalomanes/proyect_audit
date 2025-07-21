@@ -1,0 +1,71 @@
+{
+  "timestamp": "2025-07-17T14:29:51.785Z",
+  "summary": {
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "success_rate": "100.0"
+  },
+  "details": [
+    {
+      "name": "Health check del módulo ETL",
+      "status": "PASSED",
+      "result": "ETL Health: healthy - Version: 1.0.0",
+      "timestamp": "2025-07-17T14:29:51.644Z"
+    },
+    {
+      "name": "Verificación de versión",
+      "status": "PASSED",
+      "result": "Módulo ETL v1.0.0 - 15 endpoints",
+      "timestamp": "2025-07-17T14:29:51.652Z"
+    },
+    {
+      "name": "Obtener esquema normalizado",
+      "status": "PASSED",
+      "result": "Esquema normalizado: 28 campos definidos",
+      "timestamp": "2025-07-17T14:29:51.667Z"
+    },
+    {
+      "name": "Obtener reglas de validación",
+      "status": "PASSED",
+      "result": "Reglas de validación disponibles y completas",
+      "timestamp": "2025-07-17T14:29:51.673Z"
+    },
+    {
+      "name": "Obtener métricas de procesamiento",
+      "status": "PASSED",
+      "result": "Métricas: 0 jobs totales, Success rate: 94.2%",
+      "timestamp": "2025-07-17T14:29:51.686Z"
+    },
+    {
+      "name": "Dashboard de calidad",
+      "status": "PASSED",
+      "result": "Dashboard: Score promedio 88.7",
+      "timestamp": "2025-07-17T14:29:51.698Z"
+    },
+    {
+      "name": "Listar jobs ETL",
+      "status": "PASSED",
+      "result": "0 jobs listados. Paginación funcionando.",
+      "timestamp": "2025-07-17T14:29:51.708Z"
+    },
+    {
+      "name": "Filtrar jobs por estado",
+      "status": "PASSED",
+      "result": "Filtro por estado funcionando. 0 jobs COMPLETADO.",
+      "timestamp": "2025-07-17T14:29:51.721Z"
+    },
+    {
+      "name": "Configurar reglas de validación",
+      "status": "PASSED",
+      "result": "Reglas de validación configuradas correctamente",
+      "timestamp": "2025-07-17T14:29:51.770Z"
+    },
+    {
+      "name": "Generar reporte de calidad",
+      "status": "PASSED",
+      "result": "Reporte generado exitosamente: a2ad8a2d-8237-4586-8c8f-bb74022bcb46",
+      "timestamp": "2025-07-17T14:29:51.781Z"
+    }
+  ]
+}
