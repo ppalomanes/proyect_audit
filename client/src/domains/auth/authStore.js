@@ -68,18 +68,38 @@ const useAuthStore = create(
 
           const { token, refresh_token, user } = response.data.data;
           
-          console.log('✅ Login exitoso, guardando datos...');
+          console.log('✅ Login exitoso, datos recibidos:', {
+            hasToken: !!token,
+            hasRefreshToken: !!refresh_token,
+            hasUser: !!user,
+            userFields: user ? Object.keys(user) : 'no user',
+            userComplete: user
+          });
+          
+          // 🛡️ Validación relajada para debugging
+          if (!user) {
+            throw new Error('No se recibió objeto usuario del servidor');
+          }
+          
+          if (!user.email) {
+            throw new Error('Usuario sin email recibido del servidor');
+          }
+          
+          if (!user.rol && !user.role) {
+            throw new Error('Usuario sin rol recibido del servidor');
+          }
+          
+          // Normalizar rol si viene como 'role'
+          if (user.role && !user.rol) {
+            user.rol = user.role;
+          }
           
           // Configurar persistencia basada en "recordarme"
-          if (rememberMe) {
-            localStorage.setItem('token', token);
-            localStorage.setItem('refresh_token', refresh_token || '');
-            localStorage.setItem('user', JSON.stringify(user));
-          } else {
-            sessionStorage.setItem('token', token);
-            sessionStorage.setItem('refresh_token', refresh_token || '');
-            sessionStorage.setItem('user', JSON.stringify(user));
-          }
+          const storage = rememberMe ? localStorage : sessionStorage;
+          
+          storage.setItem('token', token);
+          storage.setItem('refresh_token', refresh_token || '');
+          storage.setItem('user', JSON.stringify(user));
           
           set({
             user,
@@ -96,11 +116,14 @@ const useAuthStore = create(
           
         } catch (error) {
           console.error('❌ Error en login:', error);
-          const errorMessage = error.response?.data?.message || 'Error de autenticación';
+          const errorMessage = error.response?.data?.message || error.message || 'Error de autenticación';
           set({
             loading: false,
             error: errorMessage,
-            isAuthenticated: false
+            isAuthenticated: false,
+            user: null,
+            token: null,
+            refreshToken: null
           });
           return { success: false, error: errorMessage };
         }
@@ -169,13 +192,12 @@ const useAuthStore = create(
         } catch (error) {
           console.warn('Error during server logout:', error);
         } finally {
-          // Limpiar storage
-          localStorage.removeItem('token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('user');
-          sessionStorage.removeItem('token');
-          sessionStorage.removeItem('refresh_token');
-          sessionStorage.removeItem('user');
+          // Limpiar storage de forma robusta
+          console.log('🧹 Limpiando datos de storage...');
+          ['token', 'refresh_token', 'user'].forEach(key => {
+            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
+          });
           
           set({
             user: null,
@@ -183,7 +205,8 @@ const useAuthStore = create(
             refreshToken: null,
             isAuthenticated: false,
             error: null,
-            lastActivity: null
+            lastActivity: null,
+            loading: false
           });
           
           console.log('✅ Logout completo');
@@ -275,41 +298,84 @@ const useAuthStore = create(
         }
       },
 
-      // Inicializar usuario desde storage (SIMPLIFICADO)
+      // Inicializar usuario desde storage (MEJORADO PARA DEBUGGING)
       initializeAuth: () => {
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-        const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
-        const userData = localStorage.getItem('user') || sessionStorage.getItem('user');
-        
-        console.log('🔄 Inicializando auth...', { hasToken: !!token, hasUser: !!userData });
-        
-        if (token && userData) {
-          try {
-            const user = JSON.parse(userData);
-            set({
-              user,
-              token,
-              refreshToken,
-              isAuthenticated: true,
-              lastActivity: Date.now()
-            });
+        try {
+          const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+          const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
+          const userData = localStorage.getItem('user') || sessionStorage.getItem('user');
+          
+          console.log('🔄 Inicializando auth...', { 
+            hasToken: !!token, 
+            hasUser: !!userData,
+            tokenValue: token === null ? 'null' : (token === 'undefined' ? 'string-undefined' : 'valid'),
+            userValue: userData === null ? 'null' : (userData === 'undefined' ? 'string-undefined' : 'valid')
+          });
+          
+          // 🛡️ Verificar que los datos sean válidos (no null ni string "undefined")
+          if (token && token !== 'undefined' && userData && userData !== 'undefined') {
+            try {
+              const user = JSON.parse(userData);
+              
+              console.log('🔍 Usuario parseado desde storage:', {
+                user,
+                hasId: !!user.id,
+                hasEmail: !!user.email, 
+                hasRol: !!user.rol,
+                hasRole: !!user.role
+              });
+              
+              // 🛡️ Validación relajada para debugging
+              if (user && typeof user === 'object' && user.email && (user.rol || user.role)) {
+                // Normalizar rol si viene como 'role'
+                if (user.role && !user.rol) {
+                  user.rol = user.role;
+                }
+                
+                set({
+                  user,
+                  token,
+                  refreshToken: refreshToken !== 'undefined' ? refreshToken : null,
+                  isAuthenticated: true,
+                  lastActivity: Date.now()
+                });
 
-            console.log('✅ Auth inicializado desde storage');
-            
-            // NO verificar con el servidor automáticamente
-            // get().checkAuth();
-          } catch (error) {
-            console.error('Error parsing user data:', error);
-            // Limpiar datos corruptos
-            localStorage.removeItem('token');
-            localStorage.removeItem('refresh_token');
-            localStorage.removeItem('user');
-            sessionStorage.removeItem('token');
-            sessionStorage.removeItem('refresh_token');
-            sessionStorage.removeItem('user');
+                console.log('✅ Auth inicializado desde storage', user.email);
+                return;
+              } else {
+                console.warn('⚠️ Datos de usuario inválidos:', user);
+              }
+            } catch (error) {
+              console.error('Error parsing user data:', error);
+            }
+          } else {
+            // 🔍 Normal: no hay datos guardados (null) o son inválidos
+            if (token === null && userData === null) {
+              console.log('ℹ️ No hay datos de auth guardados (estado limpio)');
+            } else {
+              console.log('ℹ️ Datos de auth inválidos o corruptos');
+            }
           }
-        } else {
-          console.log('ℹ️ No hay datos de auth guardados');
+          
+          // Estado limpio por defecto
+          set({
+            user: null,
+            token: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            lastActivity: null
+          });
+          
+        } catch (error) {
+          console.error('Error crítico en initializeAuth:', error);
+          
+          set({
+            user: null,
+            token: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            lastActivity: null
+          });
         }
       },
 
@@ -320,15 +386,15 @@ const useAuthStore = create(
 
       clearError: () => set({ error: null }),
 
-      // Verificar roles y permisos
+      // Verificar roles y permisos (CON VERIFICACIONES DE SEGURIDAD RELAJADAS)
       hasRole: (role) => {
-        const { user } = get();
-        return user?.rol === role;
+        const { user, isAuthenticated } = get();
+        return isAuthenticated && user && (user.rol === role || user.role === role);
       },
 
       hasAnyRole: (roles) => {
-        const { user } = get();
-        return roles.includes(user?.rol);
+        const { user, isAuthenticated } = get();
+        return isAuthenticated && user && (roles.includes(user.rol) || roles.includes(user.role));
       },
 
       isAdmin: () => {

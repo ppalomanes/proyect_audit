@@ -14,7 +14,7 @@ import {
   BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 
-// Componente de Métrica con animación
+// Componente de Métrica con animación y variables CSS refinadas
 const MetricCard = ({ title, value, change, changeType, icon: Icon, color = 'blue' }) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -22,47 +22,77 @@ const MetricCard = ({ title, value, change, changeType, icon: Icon, color = 'blu
     setIsVisible(true);
   }, []);
 
-  const colorClasses = {
-    blue: 'from-blue-500 to-blue-600',
-    green: 'from-green-500 to-green-600', 
-    yellow: 'from-yellow-500 to-yellow-600',
-    red: 'from-red-500 to-red-600',
-    purple: 'from-purple-500 to-purple-600',
-    indigo: 'from-indigo-500 to-indigo-600'
+  const getGradientClasses = (color) => {
+    const gradients = {
+      blue: 'from-[var(--accent-tertiary)] to-[var(--accent-primary)]',
+      green: 'from-[var(--success)] to-green-600',
+      yellow: 'from-[var(--warning)] to-yellow-600',
+      purple: 'from-[var(--accent-primary)] to-[var(--accent-secondary)]'
+    };
+    return gradients[color] || gradients.blue;
   };
 
   return (
-    <div className={`
-      bg-white rounded-xl shadow-sm border border-gray-200 p-6
-      transform transition-all duration-500 ease-out
-      ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}
-      hover:shadow-md hover:-translate-y-1
-    `}>
+    <div 
+      className={`
+        card rounded-xl p-6 transform transition-all duration-500 ease-out interactive
+        ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}
+      `}
+      style={{
+        backgroundColor: 'var(--bg-primary)',
+        borderColor: 'var(--border-primary)',
+        boxShadow: '0 2px 8px var(--shadow-light)'
+      }}
+    >
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
+          <p 
+            className="text-sm font-medium mb-1"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            {title}
+          </p>
+          <p 
+            className="text-3xl font-bold"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            {value}
+          </p>
           
           {change && (
             <div className="flex items-center mt-2">
               {changeType === 'positive' ? (
-                <ArrowTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
+                <ArrowTrendingUpIcon 
+                  className="h-4 w-4 mr-1" 
+                  style={{ color: 'var(--success)' }}
+                />
               ) : (
-                <ArrowTrendingDownIcon className="h-4 w-4 text-red-500 mr-1" />
+                <ArrowTrendingDownIcon 
+                  className="h-4 w-4 mr-1" 
+                  style={{ color: 'var(--error)' }}
+                />
               )}
-              <span className={`text-sm font-medium ${
-                changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-              }`}>
+              <span 
+                className="text-sm font-medium"
+                style={{ 
+                  color: changeType === 'positive' ? 'var(--success)' : 'var(--error)' 
+                }}
+              >
                 {change}
               </span>
-              <span className="text-sm text-gray-500 ml-1">vs mes anterior</span>
+              <span 
+                className="text-sm ml-1"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                vs mes anterior
+              </span>
             </div>
           )}
         </div>
         
         <div className={`
-          w-12 h-12 rounded-lg bg-gradient-to-br ${colorClasses[color]}
-          flex items-center justify-center
+          w-12 h-12 rounded-lg bg-gradient-to-br ${getGradientClasses(color)}
+          flex items-center justify-center shadow-lg
         `}>
           <Icon className="h-6 w-6 text-white" />
         </div>
@@ -71,32 +101,61 @@ const MetricCard = ({ title, value, change, changeType, icon: Icon, color = 'blu
   );
 };
 
-// Componente de Estado de Auditoría
+// Componente de Estado de Auditoría con variables CSS refinadas
 const AuditStatusCard = ({ status, count, percentage, color }) => {
-  const colorClasses = {
-    blue: 'bg-blue-50 text-blue-700 border-blue-200',
-    green: 'bg-green-50 text-green-700 border-green-200',
-    yellow: 'bg-yellow-50 text-yellow-700 border-yellow-200', 
-    red: 'bg-red-50 text-red-700 border-red-200',
-    gray: 'bg-gray-50 text-gray-700 border-gray-200'
+  const getColorStyles = (color) => {
+    const styles = {
+      blue: {
+        backgroundColor: 'var(--info-bg)',
+        color: 'var(--info)',
+        borderColor: 'var(--info)'
+      },
+      green: {
+        backgroundColor: 'var(--success-bg)',
+        color: 'var(--success)',
+        borderColor: 'var(--success)'
+      },
+      yellow: {
+        backgroundColor: 'var(--warning-bg)',
+        color: 'var(--warning)',
+        borderColor: 'var(--warning)'
+      },
+      red: {
+        backgroundColor: 'var(--error-bg)',
+        color: 'var(--error)',
+        borderColor: 'var(--error)'
+      }
+    };
+    return styles[color] || styles.blue;
   };
 
+  const colorStyles = getColorStyles(color);
+
   return (
-    <div className={`
-      ${colorClasses[color]} 
-      rounded-lg border p-4 flex items-center justify-between
-      transition-all duration-200 hover:shadow-sm
-    `}>
+    <div 
+      className="rounded-lg border p-4 flex items-center justify-between transition-all duration-200 interactive"
+      style={{
+        backgroundColor: colorStyles.backgroundColor,
+        color: colorStyles.color,
+        borderColor: colorStyles.borderColor
+      }}
+    >
       <div>
         <p className="font-medium">{status}</p>
         <p className="text-2xl font-bold mt-1">{count}</p>
       </div>
       <div className="text-right">
         <div className="text-sm opacity-75">{percentage}%</div>
-        <div className="w-16 h-2 bg-white bg-opacity-50 rounded-full mt-1 overflow-hidden">
+        <div 
+          className="w-16 h-2 rounded-full mt-1 overflow-hidden"
+          style={{ backgroundColor: 'rgba(255, 255, 255, 0.3)' }}
+        >
           <div 
-            className="h-full bg-current rounded-full transition-all duration-1000 ease-out"
-            style={{ width: `${percentage}%` }}
+            className="h-full rounded-full transition-all duration-1000 ease-out"
+            style={{ 
+              width: `${percentage}%`,
+              backgroundColor: 'currentColor'
+            }}
           />
         </div>
       </div>
@@ -104,51 +163,66 @@ const AuditStatusCard = ({ status, count, percentage, color }) => {
   );
 };
 
-// Componente de Auditoría Reciente
+// Componente de Auditoría Reciente con variables CSS refinadas
 const RecentAuditItem = ({ audit }) => {
-  const getStatusColor = (status) => {
-    const colors = {
-      'En Progreso': 'bg-blue-100 text-blue-800',
-      'Completada': 'bg-green-100 text-green-800',
-      'Pendiente': 'bg-yellow-100 text-yellow-800',
-      'Revisión': 'bg-purple-100 text-purple-800'
+  const getStatusBadge = (status) => {
+    const badges = {
+      'En Progreso': 'badge-info',
+      'Completada': 'badge-success',
+      'Pendiente': 'badge-warning',
+      'Revisión': 'badge-error'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return badges[status] || 'badge-info';
   };
 
-  const getEtapaColor = (etapa) => {
-    const colors = {
-      1: 'bg-red-100 text-red-800',
-      2: 'bg-orange-100 text-orange-800', 
-      3: 'bg-yellow-100 text-yellow-800',
-      4: 'bg-blue-100 text-blue-800',
-      5: 'bg-indigo-100 text-indigo-800',
-      6: 'bg-purple-100 text-purple-800',
-      7: 'bg-pink-100 text-pink-800',
-      8: 'bg-green-100 text-green-800'
-    };
-    return colors[etapa] || 'bg-gray-100 text-gray-800';
+  const getEtapaBadge = (etapa) => {
+    if (etapa <= 2) return 'badge-error';
+    if (etapa <= 4) return 'badge-warning';
+    if (etapa <= 6) return 'badge-info';
+    return 'badge-success';
   };
 
   return (
-    <div className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors duration-150">
+    <div 
+      className="flex items-center justify-between p-4 rounded-lg transition-all duration-200 interactive"
+      style={{ backgroundColor: 'transparent' }}
+      onMouseEnter={(e) => {
+        e.target.style.backgroundColor = 'var(--bg-tertiary)';
+      }}
+      onMouseLeave={(e) => {
+        e.target.style.backgroundColor = 'transparent';
+      }}
+    >
       <div className="flex-1">
         <div className="flex items-center space-x-3">
           <div className="flex-shrink-0">
-            <BuildingOfficeIcon className="h-8 w-8 text-gray-400" />
+            <BuildingOfficeIcon 
+              className="h-8 w-8" 
+              style={{ color: 'var(--text-muted)' }}
+            />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-900">{audit.proveedor}</p>
-            <p className="text-sm text-gray-500">{audit.sitio}</p>
+            <p 
+              className="text-sm font-medium"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              {audit.proveedor}
+            </p>
+            <p 
+              className="text-sm"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              {audit.sitio}
+            </p>
           </div>
         </div>
       </div>
       
       <div className="flex items-center space-x-3">
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEtapaColor(audit.etapa)}`}>
+        <span className={`badge ${getEtapaBadge(audit.etapa)}`}>
           Etapa {audit.etapa}
         </span>
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(audit.status)}`}>
+        <span className={`badge ${getStatusBadge(audit.status)}`}>
           {audit.status}
         </span>
       </div>
@@ -156,7 +230,7 @@ const RecentAuditItem = ({ audit }) => {
   );
 };
 
-// Componente Principal del Dashboard
+// Componente Principal del Dashboard con variables CSS refinadas
 const DashboardPrincipal = () => {
   const [timeRange, setTimeRange] = useState('30d');
   const [isLoading, setIsLoading] = useState(true);
@@ -206,25 +280,35 @@ const DashboardPrincipal = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div 
+        className="min-h-screen p-6"
+        style={{ backgroundColor: 'var(--bg-secondary)' }}
+      >
         <div className="max-w-7xl mx-auto">
           {/* Header Skeleton */}
           <div className="mb-8">
-            <div className="h-8 bg-gray-200 rounded w-64 mb-2 animate-pulse"></div>
-            <div className="h-4 bg-gray-200 rounded w-96 animate-pulse"></div>
+            <div className="skeleton h-8 rounded w-64 mb-2"></div>
+            <div className="skeleton h-4 rounded w-96"></div>
           </div>
           
           {/* Metrics Skeleton */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {[1,2,3,4].map(i => (
-              <div key={i} className="bg-white rounded-xl border border-gray-200 p-6">
+              <div 
+                key={i} 
+                className="rounded-xl border p-6"
+                style={{
+                  backgroundColor: 'var(--bg-primary)',
+                  borderColor: 'var(--border-primary)'
+                }}
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <div className="h-4 bg-gray-200 rounded w-24 mb-2 animate-pulse"></div>
-                    <div className="h-8 bg-gray-200 rounded w-16 mb-2 animate-pulse"></div>
-                    <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                    <div className="skeleton h-4 rounded w-24 mb-2"></div>
+                    <div className="skeleton h-8 rounded w-16 mb-2"></div>
+                    <div className="skeleton h-4 rounded w-32"></div>
                   </div>
-                  <div className="w-12 h-12 bg-gray-200 rounded-lg animate-pulse"></div>
+                  <div className="skeleton w-12 h-12 rounded-lg"></div>
                 </div>
               </div>
             ))}
@@ -235,14 +319,25 @@ const DashboardPrincipal = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div 
+      className="min-h-screen p-6"
+      style={{ backgroundColor: 'var(--bg-secondary)' }}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard Principal</h1>
-              <p className="text-gray-600 mt-1">
+              <h1 
+                className="text-3xl font-bold"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                Dashboard Principal
+              </h1>
+              <p 
+                className="mt-1"
+                style={{ color: 'var(--text-secondary)' }}
+              >
                 Visión general del sistema de auditorías técnicas
               </p>
             </div>
@@ -251,15 +346,20 @@ const DashboardPrincipal = () => {
               <select 
                 value={timeRange}
                 onChange={(e) => setTimeRange(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="border rounded-lg px-3 py-2 text-sm focus-visible"
+                style={{
+                  backgroundColor: 'var(--bg-primary)',
+                  borderColor: 'var(--border-primary)',
+                  color: 'var(--text-primary)'
+                }}
               >
-                <option value="7d">Últimos 7 días</option>
-                <option value="30d">Últimos 30 días</option>
-                <option value="90d">Últimos 90 días</option>
-                <option value="1y">Último año</option>
+                <option value="7d" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>Últimos 7 días</option>
+                <option value="30d" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>Últimos 30 días</option>
+                <option value="90d" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>Últimos 90 días</option>
+                <option value="1y" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>Último año</option>
               </select>
               
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2">
+              <button className="btn-primary flex items-center space-x-2">
                 <EyeIcon className="h-4 w-4" />
                 <span>Ver Reportes</span>
               </button>
@@ -309,10 +409,25 @@ const DashboardPrincipal = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Estados de Auditorías */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div 
+              className="card rounded-xl p-6"
+              style={{
+                backgroundColor: 'var(--bg-primary)',
+                borderColor: 'var(--border-primary)',
+                boxShadow: '0 2px 8px var(--shadow-light)'
+              }}
+            >
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Estados de Auditorías</h3>
-                <InformationCircleIcon className="h-5 w-5 text-gray-400" />
+                <h3 
+                  className="text-lg font-semibold"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  Estados de Auditorías
+                </h3>
+                <InformationCircleIcon 
+                  className="h-5 w-5" 
+                  style={{ color: 'var(--text-muted)' }}
+                />
               </div>
               
               <div className="space-y-4">
@@ -321,10 +436,16 @@ const DashboardPrincipal = () => {
                 ))}
               </div>
               
-              <div className="mt-6 pt-4 border-t border-gray-200">
+              <div 
+                className="mt-6 pt-4 border-t"
+                style={{ borderColor: 'var(--border-primary)' }}
+              >
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Total</span>
-                  <span className="font-semibold text-gray-900">
+                  <span style={{ color: 'var(--text-secondary)' }}>Total</span>
+                  <span 
+                    className="font-semibold"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
                     {dashboardData.estadosAuditorias.reduce((sum, estado) => sum + estado.count, 0)}
                   </span>
                 </div>
@@ -334,10 +455,31 @@ const DashboardPrincipal = () => {
 
           {/* Auditorías Recientes */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div 
+              className="card rounded-xl p-6"
+              style={{
+                backgroundColor: 'var(--bg-primary)',
+                borderColor: 'var(--border-primary)',
+                boxShadow: '0 2px 8px var(--shadow-light)'
+              }}
+            >
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Auditorías Recientes</h3>
-                <button className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors duration-200">
+                <h3 
+                  className="text-lg font-semibold"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  Auditorías Recientes
+                </h3>
+                <button 
+                  className="text-sm font-medium transition-colors duration-200 interactive"
+                  style={{ color: 'var(--accent-primary)' }}
+                  onMouseEnter={(e) => {
+                    e.target.style.color = 'var(--text-primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.color = 'var(--accent-primary)';
+                  }}
+                >
                   Ver todas
                 </button>
               </div>
@@ -348,13 +490,28 @@ const DashboardPrincipal = () => {
                 ))}
               </div>
               
-              <div className="mt-6 pt-4 border-t border-gray-200">
+              <div 
+                className="mt-6 pt-4 border-t"
+                style={{ borderColor: 'var(--border-primary)' }}
+              >
                 <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center text-gray-500">
+                  <div 
+                    className="flex items-center"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
                     <CalendarIcon className="h-4 w-4 mr-1" />
                     Última actualización: hace 5 minutos
                   </div>
-                  <button className="text-blue-600 hover:text-blue-700 font-medium transition-colors duration-200">
+                  <button 
+                    className="font-medium transition-colors duration-200 interactive"
+                    style={{ color: 'var(--accent-primary)' }}
+                    onMouseEnter={(e) => {
+                      e.target.style.color = 'var(--text-primary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.color = 'var(--accent-primary)';
+                    }}
+                  >
                     Actualizar
                   </button>
                 </div>
@@ -366,32 +523,53 @@ const DashboardPrincipal = () => {
         {/* Alertas y Notificaciones */}
         <div className="mt-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div 
+              className="rounded-lg border p-4"
+              style={{
+                backgroundColor: 'var(--error-bg)',
+                borderColor: 'var(--error)',
+                color: 'var(--error)'
+              }}
+            >
               <div className="flex items-start">
-                <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+                <ExclamationTriangleIcon className="h-5 w-5 mt-0.5 mr-3 flex-shrink-0" />
                 <div>
-                  <h4 className="text-sm font-medium text-red-800">Auditorías Retrasadas</h4>
-                  <p className="text-sm text-red-700 mt-1">3 auditorías exceden el tiempo límite</p>
+                  <h4 className="text-sm font-medium">Auditorías Retrasadas</h4>
+                  <p className="text-sm mt-1 opacity-90">3 auditorías exceden el tiempo límite</p>
                 </div>
               </div>
             </div>
             
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div 
+              className="rounded-lg border p-4"
+              style={{
+                backgroundColor: 'var(--warning-bg)',
+                borderColor: 'var(--warning)',
+                color: 'var(--warning)'
+              }}
+            >
               <div className="flex items-start">
-                <ClockIcon className="h-5 w-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" />
+                <ClockIcon className="h-5 w-5 mt-0.5 mr-3 flex-shrink-0" />
                 <div>
-                  <h4 className="text-sm font-medium text-yellow-800">Pendientes de Revisión</h4>
-                  <p className="text-sm text-yellow-700 mt-1">7 auditorías esperan aprobación</p>
+                  <h4 className="text-sm font-medium">Pendientes de Revisión</h4>
+                  <p className="text-sm mt-1 opacity-90">7 auditorías esperan aprobación</p>
                 </div>
               </div>
             </div>
             
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div 
+              className="rounded-lg border p-4"
+              style={{
+                backgroundColor: 'var(--success-bg)',
+                borderColor: 'var(--success)',
+                color: 'var(--success)'
+              }}
+            >
               <div className="flex items-start">
-                <CheckCircleIcon className="h-5 w-5 text-green-400 mt-0.5 mr-3 flex-shrink-0" />
+                <CheckCircleIcon className="h-5 w-5 mt-0.5 mr-3 flex-shrink-0" />
                 <div>
-                  <h4 className="text-sm font-medium text-green-800">Score Mejorado</h4>
-                  <p className="text-sm text-green-700 mt-1">+3% en calificaciones promedio</p>
+                  <h4 className="text-sm font-medium">Score Mejorado</h4>
+                  <p className="text-sm mt-1 opacity-90">+3% en calificaciones promedio</p>
                 </div>
               </div>
             </div>

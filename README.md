@@ -30,7 +30,7 @@
    - Jobs programados y limpieza automática
    - Estadísticas y monitoreo en tiempo real
 
-5. **✅ Modelos Sequelize** 
+5. **✅ Modelos Sequelize**
    - `AnalisisIA.model.js` - Almacena resultados de análisis IA
    - `CriterioScoring.model.js` - Criterios personalizables de scoring
    - Relaciones, validaciones y métodos de instancia
@@ -61,12 +61,14 @@
 ## 🚀 Próximos Pasos
 
 ### Fase Inmediata (Siguiente)
+
 1. **Instalar dependencias y configurar entorno**
 2. **Ejecutar script de base de datos**
 3. **Configurar Ollama con modelos requeridos**
 4. **Probar integración completa**
 
 ### Fases Siguientes
+
 1. **Implementar módulos faltantes** (auth, auditorias, ETL básico)
 2. **Crear frontend React** con integración al backend
 3. **Testing y optimización**
@@ -186,7 +188,7 @@ OLLAMA_PORT=11434
 
 ### Estructura de Directorios Importante
 
-```
+```text
 /server/
 ├── config/          # Configuraciones centrales
 ├── domains/         # Módulos por dominio de negocio
@@ -198,7 +200,7 @@ OLLAMA_PORT=11434
 
 ### Endpoints Principales Disponibles
 
-```
+```text
 GET  /api/health              # Estado del sistema
 POST /api/ia/analyze/document # Análisis de documentos
 POST /api/ia/analyze/image    # Análisis de imágenes
@@ -241,25 +243,29 @@ curl -X GET http://localhost:3001/api/ia/health \
 ### Problemas Comunes
 
 1. **Error de conexión MySQL**
-   ```
+
+   ```text
    ❌ Error conectando a MySQL: ECONNREFUSED
    💡 Solución: Verificar que XAMPP esté ejecutándose
    ```
 
 2. **Error Ollama no disponible**
-   ```
+
+   ```text
    ❌ Ollama no está disponible
    💡 Solución: Ejecutar 'ollama serve' en terminal
    ```
 
 3. **Error modelos IA faltantes**
-   ```
+
+   ```text
    ⚠️  Modelos faltantes: llama3.2:1b, moondream
    💡 Solución: ollama pull llama3.2:1b && ollama pull moondream
    ```
 
 4. **Puerto en uso**
-   ```
+
+   ```text
    ❌ Port 3001 is already in use
    💡 Solución: Cambiar PORT en .env o matar proceso
    ```
@@ -289,7 +295,7 @@ El endpoint `/api/health` proporciona información completa:
   "environment": "development",
   "services": {
     "database": "connected",
-    "redis": "connected", 
+    "redis": "connected",
     "ollama": "healthy"
   }
 }
@@ -307,6 +313,7 @@ El endpoint `/api/health` proporciona información completa:
 ## 🎯 Estado del Desarrollo
 
 ### ✅ Completado
+
 - [x] Configuraciones base del servidor
 - [x] Modelos de base de datos IA
 - [x] Middleware de autenticación y errores
@@ -315,11 +322,13 @@ El endpoint `/api/health` proporciona información completa:
 - [x] Documentación de instalación
 
 ### 🔄 En Progreso
+
 - [ ] Módulos auth, auditorias, ETL
 - [ ] Frontend React
 - [ ] Testing automatizado
 
 ### 📋 Pendiente
+
 - [ ] Despliegue en producción
 - [ ] Monitoreo avanzado
 - [ ] Documentación de usuario final

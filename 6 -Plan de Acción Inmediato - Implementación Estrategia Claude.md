@@ -3,6 +3,7 @@
 ## Semana 1: Kickoff y Setup Foundation
 
 ### Día 1: Preparación del Entorno
+
 ```bash
 # 1. Crear estructura base del proyecto
 mkdir -p portal-auditorias/{client,server,database,docs,scripts,ollama-models}
@@ -33,11 +34,12 @@ npm install --save-dev glob chroma-js
 ```
 
 ### Día 2: Estructura de Dominios
+
 ```bash
 # 1. Crear estructura de dominios backend
 mkdir -p server/domains/{auth,auditorias,etl,ia,chat,notifications,entities,dashboards}
 
-# 2. Crear estructura de dominios frontend  
+# 2. Crear estructura de dominios frontend
 mkdir -p client/src/domains/{auth,auditorias,etl,ia-scoring,chat,dashboards,shared}
 
 # 3. Setup básico de cada dominio
@@ -48,6 +50,7 @@ done
 ```
 
 ### Día 3: PROJECT_OVERVIEW.md y Scripts
+
 ```bash
 # 1. Crear PROJECT_OVERVIEW.md desde artifacts generados
 cp /artifacts/project-overview-claude.md PROJECT_OVERVIEW.md
@@ -63,6 +66,7 @@ npm pkg set scripts.claude:rebuild="npm run claude:generate:all && npm run claud
 ```
 
 ### Día 4: Claude.md de Módulos Críticos
+
 ```bash
 # 1. Generar Claude.md para auditorías
 cp /artifacts/auditorias-claude-md.md server/domains/auditorias/Claude.md
@@ -75,6 +79,7 @@ npm run claude:generate:all
 ```
 
 ### Día 5: Validación y CI/CD
+
 ```bash
 # 1. Setup GitHub Actions
 mkdir -p .github/workflows
@@ -97,37 +102,46 @@ git commit -m "🎯 Implement Claude.md Strategy Foundation"
 ### Sesión de Training Desarrolladores
 
 #### 📚 Material de Capacitación
+
 ```markdown
 # 🎓 Training: Estrategia Claude.md
 
 ## Objetivos de Aprendizaje
+
 Al finalizar este training, los desarrolladores serán capaces de:
+
 - ✅ Navegar eficientemente la documentación Claude.md
 - ✅ Aplicar protocolos de consulta optimizados
 - ✅ Usar Modo Plan y Pensamiento Extendido efectivamente
 - ✅ Mantener sincronizada la documentación automáticamente
 
 ## Ejercicio Práctico 1: Navegación Básica
+
 **Tarea**: "Necesito entender cómo funciona el ETL de parque informático"
 
 **Protocolo**:
+
 1. 🔍 Leer PROJECT_OVERVIEW.md → Sección "Mapeo de Relevancia"
 2. 📄 Localizar módulo ETL → `/server/domains/etl/Claude.md`
 3. 🎯 Consultar Claude: "Basándote en /server/domains/etl/Claude.md, explícame el proceso de normalización de 28 campos"
 
 ## Ejercicio Práctico 2: Desarrollo Guiado
+
 **Tarea**: "Implementar validación adicional en el proceso de auditoría"
 
 **Protocolo**:
+
 1. 🤖 Consultar Claude: "Activa Modo Plan. Necesito agregar validación de documentos duplicados en el módulo auditorías"
 2. 📋 Revisar plan propuesto
 3. 💻 Implementar paso a paso con Claude
 4. ✅ Validar con `npm run claude:validate`
 
 ## Ejercicio Práctico 3: Debugging Sistémico
+
 **Tarea**: "El sistema no envía notificaciones de cambio de etapa"
 
 **Protocolo**:
+
 1. 🔍 Consultar Claude: "Analiza el flujo de notificaciones usando PROJECT_OVERVIEW.md"
 2. 📊 Identificar módulos involucrados
 3. 🐛 Diagnosticar usando Claude.md específicos
@@ -135,7 +149,8 @@ Al finalizar este training, los desarrolladores serán capaces de:
 ```
 
 ### Workshop de Adopción
-```
+
+```text
 🎯 Workshop de 4 horas:
 
 Hora 1: Presentación de la Estrategia
@@ -162,31 +177,33 @@ Hora 4: Q&A y Optimización
 ## Semana 3-4: Optimización y Métricas
 
 ### Implementación de Monitoreo
+
 ```javascript
 // Dashboard básico de métricas
 const metrics = {
-  "week_1": {
-    "claude_queries_daily": 23,
-    "avg_context_retrieval_time": "4.2s",
-    "developer_satisfaction": 3.8,
-    "documentation_coverage": 85
+  week_1: {
+    claude_queries_daily: 23,
+    avg_context_retrieval_time: "4.2s",
+    developer_satisfaction: 3.8,
+    documentation_coverage: 85,
   },
-  "week_2": {
-    "claude_queries_daily": 34,
-    "avg_context_retrieval_time": "2.1s", 
-    "developer_satisfaction": 4.2,
-    "documentation_coverage": 92
+  week_2: {
+    claude_queries_daily: 34,
+    avg_context_retrieval_time: "2.1s",
+    developer_satisfaction: 4.2,
+    documentation_coverage: 92,
   },
-  "improvement": {
-    "queries_increase": "+48%",
-    "speed_improvement": "+50%",
-    "satisfaction_increase": "+11%",
-    "coverage_increase": "+8%"
-  }
+  improvement: {
+    queries_increase: "+48%",
+    speed_improvement: "+50%",
+    satisfaction_increase: "+11%",
+    coverage_increase: "+8%",
+  },
 };
 ```
 
 ### Feedback Loop Implementation
+
 ```bash
 # Script de recolección de feedback
 cat > scripts/collect-feedback.js << 'EOF'
@@ -214,7 +231,8 @@ chmod +x scripts/collect-feedback.js
 ## 🎯 Métricas de Éxito - Primeras 4 Semanas
 
 ### Objetivos Cuantificables
-```
+
+```text
 📊 Métricas Target vs Actual:
 
 ✅ Cobertura Documentación:
@@ -234,29 +252,32 @@ Target: 20% | Actual: 38% | Status: ✅ SUPERADO
 ```
 
 ### Testimoniales del Equipo
-```
-👨‍💻 "Antes tardaba 30 minutos buscando cómo implementar algo. 
-Ahora Claude me da el contexto exacto en 30 segundos." 
+
+```text
+👨‍💻 "Antes tardaba 30 minutos buscando cómo implementar algo.
+Ahora Claude me da el contexto exacto en 30 segundos."
 - Developer Senior
 
-👩‍💻 "El onboarding se redujo de 2 semanas a 3 días. 
-PROJECT_OVERVIEW.md es como un mapa del tesoro." 
+👩‍💻 "El onboarding se redujo de 2 semanas a 3 días.
+PROJECT_OVERVIEW.md es como un mapa del tesoro."
 - Developer Junior
 
-🧑‍💻 "El debugging cambió completamente. Claude navega 
-el código como si fuera parte del equipo." 
+🧑‍💻 "El debugging cambió completamente. Claude navega
+el código como si fuera parte del equipo."
 - Tech Lead
 ```
 
 ## 🚀 Roadmap de Expansión
 
 ### Mes 2: Maduración
+
 - ✅ Implementar RAG si el proyecto crece >50 módulos
 - ✅ Automatizar 100% del mantenimiento Claude.md
 - ✅ Integrar métricas con herramientas de productivity
 - ✅ Crear templates reutilizables para otros proyectos
 
 ### Mes 3: Escalado
+
 - ✅ Replicar estrategia en otros proyectos del portfolio
 - ✅ Crear centro de excelencia Claude.md
 - ✅ Documentar best practices y lessons learned
@@ -284,4 +305,4 @@ La **Estrategia Claude.md** para el Portal de Auditorías Técnicas ha sido **di
 
 **📊 Estado Final**: ✅ **IMPLEMENTACIÓN COMPLETA Y EXITOSA**
 **🎯 Próximo Hito**: Replicar esta metodología en toda la organización
-**🏆 Reconocimiento**: Primer proyecto en implementar Claude.md Strategy de manera integral
+**🏆 Reconocimiento**: Primer proyecto en implementar Claude.md Strategy de manera integral.

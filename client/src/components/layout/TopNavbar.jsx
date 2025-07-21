@@ -1,5 +1,5 @@
 /**
- * Navbar superior con tema oscuro
+ * Navbar superior con tema dinámico refinado
  * Portal de Auditorías Técnicas
  * 
  * Características:
@@ -8,11 +8,13 @@
  * - Notificaciones con badge
  * - Menu de usuario integrado
  * - Botón acción principal
+ * - Sistema de colores refinado basado en ClickUp
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Icons } from './Icons';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // Store de autenticación real
 import { useAuthStore } from '../../domains/auth/authStore';
@@ -89,12 +91,13 @@ const TopNavbar = ({ isCollapsed }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
+  const { isDarkMode, toggleTheme } = useTheme();
   
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const leftMargin = isCollapsed ? 'ml-20' : 'ml-64';
+  const leftPadding = isCollapsed ? 'pl-24' : 'pl-80'; // Más espacio: 320px cuando expandido
   const breadcrumbs = getBreadcrumbs(location.pathname);
   const unreadNotifications = mockNotifications.filter(n => n.unread).length;
 
@@ -116,29 +119,51 @@ const TopNavbar = ({ isCollapsed }) => {
   };
 
   return (
-    <nav className={`
-      fixed top-0 right-0 h-16 bg-[#292D34] border-b border-[#5C6470] z-40
-      transition-all duration-300 ease-out ${leftMargin}
-    `}>
-      <div className="flex items-center justify-between h-full px-6">
+    <nav 
+      className="top-navbar fixed top-0 left-0 right-0 h-16 z-40 transition-all duration-300 cubic-bezier(0.4, 0, 0.2, 1)"
+      style={{
+        backgroundColor: 'var(--bg-primary)',
+        borderBottom: '1px solid var(--border-primary)',
+        boxShadow: '0 1px 8px var(--shadow-light)'
+      }}
+    >
+      <div className={`flex items-center justify-between h-full px-6 transition-all duration-300 ease-out ${leftPadding}`}>
         
         {/* Izquierda: Breadcrumbs */}
         <div className="flex items-center space-x-2 min-w-0">
           {breadcrumbs.map((crumb, index) => (
             <div key={crumb.name} className="flex items-center">
               {index > 0 && (
-                <Icons.ChevronRight className="w-4 h-4 text-gray-400 mx-2 flex-shrink-0" />
+                <Icons.ChevronRight 
+                  className="w-4 h-4 mx-2 flex-shrink-0" 
+                  style={{ color: 'var(--text-muted)' }}
+                />
               )}
               <button
                 onClick={() => navigate(crumb.href)}
                 className={`
                   flex items-center space-x-1 px-2 py-1 rounded-md text-sm
-                  transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#7B68EE]
+                  transition-all duration-200 focus-visible interactive
                   ${index === breadcrumbs.length - 1 
-                    ? 'text-white font-medium cursor-default' 
-                    : 'text-gray-300 hover:text-white hover:bg-[rgba(123,104,238,0.1)]'
+                    ? 'font-medium cursor-default' 
+                    : 'hover:scale-105'
                   }
                 `}
+                style={{
+                  color: index === breadcrumbs.length - 1 ? 'var(--text-primary)' : 'var(--text-secondary)'
+                }}
+                onMouseEnter={(e) => {
+                  if (index < breadcrumbs.length - 1) {
+                    e.target.style.backgroundColor = 'var(--bg-tertiary)';
+                    e.target.style.color = 'var(--text-primary)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (index < breadcrumbs.length - 1) {
+                    e.target.style.backgroundColor = 'transparent';
+                    e.target.style.color = 'var(--text-secondary)';
+                  }
+                }}
               >
                 {crumb.icon && <crumb.icon className="w-4 h-4 flex-shrink-0" />}
                 <span className="truncate">{crumb.name}</span>
@@ -150,20 +175,28 @@ const TopNavbar = ({ isCollapsed }) => {
         {/* Centro: Barra de búsqueda */}
         <div className="hidden md:block flex-1 max-w-md mx-8">
           <form onSubmit={handleSearch} className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Icons.Search className="w-4 h-4 text-gray-400" />
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Icons.Search 
+                className="w-4 h-4" 
+                style={{ color: 'var(--text-muted)' }}
+              />
             </div>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar auditorías, proveedores..."
-              className="
-                block w-full pl-10 pr-3 py-2 border border-[#5C6470] rounded-lg
-                bg-[#1F2937] text-white placeholder-gray-400 text-sm
-                focus:outline-none focus:ring-2 focus:ring-[#7B68EE] focus:border-transparent
-                transition-all duration-200
-              "
+              className="block w-full rounded-lg text-sm transition-all duration-200 focus-visible"
+              style={{
+                backgroundColor: 'var(--bg-tertiary)',
+                borderColor: 'var(--border-primary)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-primary)',
+                paddingLeft: '3rem',
+                paddingRight: '1rem',
+                paddingTop: '0.5rem',
+                paddingBottom: '0.5rem'
+              }}
             />
           </form>
         </div>
@@ -174,15 +207,45 @@ const TopNavbar = ({ isCollapsed }) => {
           {/* Botón Crear Auditoría */}
           <button 
             onClick={handleCreateAuditoria}
-            className="
-              flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-[#7B68EE] to-[#FD71AF]
-              text-white font-medium rounded-lg hover:shadow-lg hover:-translate-y-0.5
-              transition-all duration-200 transform focus:outline-none focus:ring-2 focus:ring-[#7B68EE]
-              text-sm
-            "
+            className="btn-primary flex items-center space-x-2 px-4 py-2 font-medium rounded-lg text-sm interactive"
           >
             <Icons.Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Nueva Auditoría</span>
+          </button>
+
+          {/* Toggle Tema Claro/Oscuro */}
+          <button
+            onClick={toggleTheme}
+            className="
+              relative p-2 rounded-lg transition-all duration-300 interactive focus-visible
+            "
+            style={{ 
+              color: 'var(--text-secondary)',
+              backgroundColor: 'transparent'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = 'var(--bg-tertiary)';
+              e.target.style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = 'transparent';
+              e.target.style.color = 'var(--text-secondary)';
+            }}
+            title={isDarkMode ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+          >
+            <div className="relative w-5 h-5">
+              {/* Transición suave entre iconos */}
+              <div className={`absolute inset-0 transition-all duration-300 ${
+                isDarkMode ? 'opacity-100 rotate-0' : 'opacity-0 rotate-180'
+              }`}>
+                <Icons.Sun className="w-5 h-5" />
+              </div>
+              <div className={`absolute inset-0 transition-all duration-300 ${
+                !isDarkMode ? 'opacity-100 rotate-0' : 'opacity-0 -rotate-180'
+              }`}>
+                <Icons.Moon className="w-5 h-5" />
+              </div>
+            </div>
           </button>
 
           {/* Notificaciones */}
@@ -190,14 +253,28 @@ const TopNavbar = ({ isCollapsed }) => {
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               className="
-                relative p-2 text-gray-300 hover:text-white hover:bg-[rgba(123,104,238,0.1)]
-                rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#7B68EE]
+                relative p-2 rounded-lg transition-all duration-200 interactive focus-visible
               "
+              style={{ 
+                color: 'var(--text-secondary)',
+                backgroundColor: 'transparent'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = 'var(--bg-tertiary)';
+                e.target.style.color = 'var(--text-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'transparent';
+                e.target.style.color = 'var(--text-secondary)';
+              }}
             >
               <Icons.Bell className="w-5 h-5" />
               {/* Badge de notificaciones */}
               {unreadNotifications > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#FD71AF] rounded-full flex items-center justify-center">
+                <span 
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: 'var(--error)' }}
+                >
                   <span className="text-xs text-white font-bold">
                     {unreadNotifications > 9 ? '9+' : unreadNotifications}
                   </span>
@@ -207,12 +284,34 @@ const TopNavbar = ({ isCollapsed }) => {
 
             {/* Dropdown de notificaciones */}
             {showNotifications && (
-              <div className="absolute right-0 top-full mt-2 w-80 bg-[#292D34] border border-[#5C6470] rounded-lg shadow-xl overflow-hidden z-50">
-                <div className="p-4 border-b border-[#5C6470] bg-[#1F2937]">
+              <div 
+                className="dropdown absolute right-0 top-full mt-2 w-80 overflow-hidden z-50 fade-in"
+                style={{
+                  backgroundColor: 'var(--bg-primary)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: '12px',
+                  boxShadow: '0 8px 32px var(--shadow-medium)'
+                }}
+              >
+                <div 
+                  className="p-4 border-b"
+                  style={{
+                    borderColor: 'var(--border-primary)',
+                    backgroundColor: 'var(--bg-secondary)'
+                  }}
+                >
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-white">Notificaciones</h3>
+                    <h3 
+                      className="text-sm font-semibold"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      Notificaciones
+                    </h3>
                     {unreadNotifications > 0 && (
-                      <span className="text-xs text-[#7B68EE] font-medium">
+                      <span 
+                        className="text-xs font-medium"
+                        style={{ color: 'var(--accent-primary)' }}
+                      >
                         {unreadNotifications} nuevas
                       </span>
                     )}
@@ -224,41 +323,77 @@ const TopNavbar = ({ isCollapsed }) => {
                     <div 
                       key={notification.id} 
                       className={`
-                        p-4 border-b border-[#5C6470] hover:bg-[rgba(123,104,238,0.05)] 
-                        transition-colors cursor-pointer
-                        ${notification.unread ? 'bg-[rgba(123,104,238,0.02)]' : ''}
+                        p-4 border-b transition-colors cursor-pointer interactive
+                        ${notification.unread ? 'opacity-100' : 'opacity-80'}
                       `}
+                      style={{
+                        borderColor: 'var(--border-primary)',
+                        backgroundColor: notification.unread ? 'var(--bg-secondary)' : 'transparent'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.backgroundColor = 'var(--bg-tertiary)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.backgroundColor = notification.unread ? 'var(--bg-secondary)' : 'transparent';
+                      }}
                     >
                       <div className="flex items-start space-x-3">
                         <div className={`
                           w-2 h-2 rounded-full mt-2 flex-shrink-0
-                          ${notification.type === 'warning' ? 'bg-yellow-400' :
-                            notification.type === 'info' ? 'bg-[#49CCF9]' :
-                            'bg-green-400'}
+                          ${notification.type === 'warning' ? 'bg-[var(--warning)]' :
+                            notification.type === 'info' ? 'bg-[var(--info)]' :
+                            'bg-[var(--success)]'}
                         `} />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
-                            <p className="text-sm font-medium text-white truncate">
+                            <p 
+                              className="text-sm font-medium truncate"
+                              style={{ color: 'var(--text-primary)' }}
+                            >
                               {notification.title}
                             </p>
                             {notification.unread && (
-                              <div className="w-2 h-2 bg-[#FD71AF] rounded-full flex-shrink-0 ml-2" />
+                              <div 
+                                className="w-2 h-2 rounded-full flex-shrink-0 ml-2" 
+                                style={{ backgroundColor: 'var(--error)' }}
+                              />
                             )}
                           </div>
-                          <p className="text-xs text-gray-300 mb-1 line-clamp-2">
+                          <p 
+                            className="text-xs mb-1 line-clamp-2"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
                             {notification.message}
                           </p>
-                          <p className="text-xs text-gray-400">{notification.time}</p>
+                          <p 
+                            className="text-xs"
+                            style={{ color: 'var(--text-muted)' }}
+                          >
+                            {notification.time}
+                          </p>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
                 
-                <div className="p-3 text-center border-t border-[#5C6470] bg-[#1F2937]">
+                <div 
+                  className="p-3 text-center border-t"
+                  style={{
+                    borderColor: 'var(--border-primary)',
+                    backgroundColor: 'var(--bg-secondary)'
+                  }}
+                >
                   <button 
                     onClick={() => navigate('/notificaciones')}
-                    className="text-sm text-[#7B68EE] hover:text-white transition-colors"
+                    className="text-sm transition-colors interactive"
+                    style={{ color: 'var(--accent-primary)' }}
+                    onMouseEnter={(e) => {
+                      e.target.style.color = 'var(--text-primary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.color = 'var(--accent-primary)';
+                    }}
                   >
                     Ver todas las notificaciones
                   </button>
@@ -272,18 +407,31 @@ const TopNavbar = ({ isCollapsed }) => {
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="
-                flex items-center space-x-2 p-2 text-gray-300 hover:text-white
-                hover:bg-[rgba(123,104,238,0.1)] rounded-lg transition-all duration-200
-                focus:outline-none focus:ring-2 focus:ring-[#7B68EE]
+                flex items-center space-x-2 p-2 rounded-lg transition-all duration-200 interactive focus-visible
               "
+              style={{ 
+                color: 'var(--text-secondary)',
+                backgroundColor: 'transparent'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = 'var(--bg-tertiary)';
+                e.target.style.color = 'var(--text-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'transparent';
+                e.target.style.color = 'var(--text-secondary)';
+              }}
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-[#49CCF9] to-[#7B68EE] rounded-full flex items-center justify-center shadow-md">
+              <div className="w-8 h-8 bg-gradient-to-br from-[var(--accent-tertiary)] to-[var(--accent-primary)] rounded-full flex items-center justify-center shadow-md">
                 <span className="text-white font-medium text-sm">
                   {getUserInitials(user)}
                 </span>
               </div>
               <div className="hidden lg:block text-left">
-                <p className="text-sm font-medium text-white truncate max-w-24">
+                <p 
+                  className="text-sm font-medium truncate max-w-24"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   {getUserFullName(user)}
                 </p>
               </div>
@@ -291,12 +439,42 @@ const TopNavbar = ({ isCollapsed }) => {
 
             {/* Dropdown usuario */}
             {showUserMenu && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-[#292D34] border border-[#5C6470] rounded-lg shadow-xl overflow-hidden z-50">
-                <div className="p-4 border-b border-[#5C6470] bg-[#1F2937]">
-                  <p className="text-sm font-medium text-white truncate">{getUserFullName(user)}</p>
-                  <p className="text-xs text-gray-300 truncate">{user.email}</p>
+              <div 
+                className="dropdown absolute right-0 top-full mt-2 w-56 overflow-hidden z-50 fade-in"
+                style={{
+                  backgroundColor: 'var(--bg-primary)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: '12px',
+                  boxShadow: '0 8px 32px var(--shadow-medium)'
+                }}
+              >
+                <div 
+                  className="p-4 border-b"
+                  style={{
+                    borderColor: 'var(--border-primary)',
+                    backgroundColor: 'var(--bg-secondary)'
+                  }}
+                >
+                  <p 
+                    className="text-sm font-medium truncate"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    {getUserFullName(user)}
+                  </p>
+                  <p 
+                    className="text-xs truncate"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    {user.email}
+                  </p>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-[#7B68EE] font-medium bg-[rgba(123,104,238,0.1)] px-2 py-1 rounded-full">
+                    <span 
+                      className="text-xs font-medium px-2 py-1 rounded-full"
+                      style={{ 
+                        color: 'var(--accent-primary)',
+                        backgroundColor: 'rgba(123, 104, 238, 0.1)'
+                      }}
+                    >
                       {translateUserRole(user.rol)}
                     </span>
                   </div>
@@ -305,24 +483,35 @@ const TopNavbar = ({ isCollapsed }) => {
                 <div className="py-1">
                   <button 
                     onClick={() => navigate('/perfil')}
-                    className="flex items-center w-full px-4 py-3 text-sm text-white hover:bg-[rgba(123,104,238,0.1)] transition-colors"
+                    className="dropdown-item flex items-center w-full px-4 py-3 text-sm transition-colors"
+                    style={{ color: 'var(--text-secondary)' }}
                   >
                     <Icons.User className="w-4 h-4 mr-3" />
                     Mi Perfil
                   </button>
                   <button 
                     onClick={() => navigate('/configuracion')}
-                    className="flex items-center w-full px-4 py-3 text-sm text-white hover:bg-[rgba(123,104,238,0.1)] transition-colors"
+                    className="dropdown-item flex items-center w-full px-4 py-3 text-sm transition-colors"
+                    style={{ color: 'var(--text-secondary)' }}
                   >
                     <Icons.Settings className="w-4 h-4 mr-3" />
                     Configuración
                   </button>
                 </div>
                 
-                <div className="border-t border-[#5C6470]">
+                <div style={{ borderTop: '1px solid var(--border-primary)' }}>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center w-full px-4 py-3 text-sm text-white hover:bg-[rgba(253,113,175,0.1)] transition-colors"
+                    className="dropdown-item flex items-center w-full px-4 py-3 text-sm transition-colors"
+                    style={{ color: 'var(--text-secondary)' }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = 'rgba(253, 113, 175, 0.1)';
+                      e.target.style.color = 'var(--accent-secondary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'transparent';
+                      e.target.style.color = 'var(--text-secondary)';
+                    }}
                   >
                     <Icons.Logout className="w-4 h-4 mr-3" />
                     Cerrar Sesión
@@ -337,38 +526,46 @@ const TopNavbar = ({ isCollapsed }) => {
       {/* Búsqueda móvil */}
       <div className="md:hidden px-4 pb-3">
         <form onSubmit={handleSearch} className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Icons.Search className="w-4 h-4 text-gray-400" />
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Icons.Search 
+              className="w-4 h-4" 
+              style={{ color: 'var(--text-muted)' }}
+            />
           </div>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar..."
-            className="
-              block w-full pl-10 pr-3 py-2 border border-[#5C6470] rounded-lg
-              bg-[#1F2937] text-white placeholder-gray-400 text-sm
-              focus:outline-none focus:ring-2 focus:ring-[#7B68EE] focus:border-transparent
-              transition-all duration-200
-            "
+            className="block w-full rounded-lg text-sm transition-all duration-200 focus-visible"
+            style={{
+              backgroundColor: 'var(--bg-tertiary)',
+              borderColor: 'var(--border-primary)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-primary)',
+              paddingLeft: '3rem',
+              paddingRight: '1rem',
+              paddingTop: '0.5rem',
+              paddingBottom: '0.5rem'
+            }}
           />
         </form>
       </div>
 
-      {/* Estilos para scrollbar personalizado */}
+      {/* Estilos para scrollbar personalizado y utilidades */}
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
+          width: 6px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #5C6470;
-          border-radius: 2px;
+          background: var(--border-primary);
+          border-radius: 3px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #7B68EE;
+          background: var(--border-hover);
         }
         .line-clamp-2 {
           display: -webkit-box;

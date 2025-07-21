@@ -2,52 +2,467 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Estilos globales */
+/* Variables CSS para temas - Refinamiento basado en ClickUp */
+:root {
+  /* Colores de acento corporativos - Mantener siempre */
+  --accent-primary: #7B68EE;    /* Morado principal */
+  --accent-secondary: #FD71AF;  /* Rosa corporativo */
+  --accent-tertiary: #49CCF9;   /* Azul corporativo */
+}
+
+/* Tema oscuro por defecto - Inspirado en ClickUp Construction Board */
+:root,
+.dark {
+  --bg-primary: #1a1d23;       /* Fondo principal más oscuro y profesional */
+  --bg-secondary: #252932;     /* Fondo secundario con mejor contraste */
+  --bg-tertiary: #2f3349;      /* Fondo terciario para cards y elementos */
+  --bg-quaternary: #3c4043;    /* Fondo para elementos elevados */
+  --text-primary: #ffffff;     /* Texto principal blanco puro */
+  --text-secondary: #e1e5e9;   /* Texto secundario suave */
+  --text-muted: #9aa0a6;       /* Texto desactivado/muted */
+  --text-inverse: #1a1d23;     /* Texto sobre fondos claros */
+  --border-primary: #404854;   /* Bordes principales sutiles */
+  --border-secondary: #2d3748; /* Bordes secundarios más sutiles */
+  --border-hover: #4a5568;     /* Bordes en hover */
+  --shadow-light: rgba(0, 0, 0, 0.15); /* Sombras ligeras */
+  --shadow-medium: rgba(0, 0, 0, 0.25); /* Sombras medianas */
+  --shadow-heavy: rgba(0, 0, 0, 0.4);   /* Sombras pesadas */
+  
+  /* Estados y feedback */
+  --success: #00d2ff;           /* Verde/azul para éxito */
+  --warning: #ffb946;           /* Amarillo para advertencias */
+  --error: #ff4757;             /* Rojo vibrante para errores */
+  --info: #4dabf7;              /* Azul para información */
+  
+  /* Fondos de estados */
+  --success-bg: rgba(0, 210, 255, 0.1);
+  --warning-bg: rgba(255, 185, 70, 0.1);
+  --error-bg: rgba(255, 71, 87, 0.1);
+  --info-bg: rgba(77, 171, 247, 0.1);
+  
+  /* Overlay y modal */
+  --overlay: rgba(0, 0, 0, 0.6);
+  --modal-bg: var(--bg-tertiary);
+}
+
+/* Tema claro - Inspirado en ClickUp Release Project */
+.light {
+  --bg-primary: #ffffff;       /* Blanco puro como fondo principal */
+  --bg-secondary: #fafbfc;     /* Gris muy claro para areas secundarias */
+  --bg-tertiary: #f4f6f8;      /* Gris claro para cards y paneles */
+  --bg-quaternary: #ebeef1;    /* Gris para elementos elevados */
+  --text-primary: #1d2125;     /* Negro suave para texto principal */
+  --text-secondary: #44546f;   /* Gris oscuro para texto secundario */
+  --text-muted: #626f86;       /* Gris medio para texto muted */
+  --text-inverse: #ffffff;     /* Texto blanco sobre fondos oscuros */
+  --border-primary: #dfe1e6;   /* Borde principal muy sutil */
+  --border-secondary: #e4e6ea; /* Borde secundario más visible */
+  --border-hover: #c1c7d0;     /* Borde en hover */
+  --shadow-light: rgba(9, 30, 66, 0.08);  /* Sombras ligeras */
+  --shadow-medium: rgba(9, 30, 66, 0.15); /* Sombras medianas */
+  --shadow-heavy: rgba(9, 30, 66, 0.25);  /* Sombras pesadas */
+  
+  /* Colores de acento corporativos mantenidos */
+  --accent-primary: #7B68EE;    /* Morado principal */
+  --accent-secondary: #FD71AF;  /* Rosa corporativo */
+  --accent-tertiary: #49CCF9;   /* Azul corporativo */
+  
+  /* Estados y feedback - Versiones más suaves para tema claro */
+  --success: #36b37e;           /* Verde para éxito */
+  --warning: #ffab00;           /* Amarillo para advertencias */
+  --error: #ff4757;             /* Rojo consistente para errores */
+  --info: #0052cc;              /* Azul para información */
+  
+  /* Fondos de estados más suaves */
+  --success-bg: rgba(54, 179, 126, 0.08);
+  --warning-bg: rgba(255, 171, 0, 0.08);
+  --error-bg: rgba(255, 71, 87, 0.08);
+  --info-bg: rgba(0, 82, 204, 0.08);
+  
+  /* Overlay y modal */
+  --overlay: rgba(9, 30, 66, 0.54);
+  --modal-bg: var(--bg-primary);
+}
+
+/* Tema oscuro - Mismas variables para consistencia */
+.dark {
+  --bg-primary: #1a1d23;
+  --bg-secondary: #252932;
+  --bg-tertiary: #2f3349;
+  --bg-quaternary: #3c4043;
+  --text-primary: #ffffff;
+  --text-secondary: #e1e5e9;
+  --text-muted: #9aa0a6;
+  --text-inverse: #1a1d23;
+  --border-primary: #404854;
+  --border-secondary: #2d3748;
+  --border-hover: #4a5568;
+  --shadow-light: rgba(0, 0, 0, 0.15);
+  --shadow-medium: rgba(0, 0, 0, 0.25);
+  --shadow-heavy: rgba(0, 0, 0, 0.4);
+  
+  --accent-primary: #7B68EE;
+  --accent-secondary: #FD71AF;
+  --accent-tertiary: #49CCF9;
+  
+  --success: #00d2ff;
+  --warning: #ffb946;
+  --error: #ff4757;
+  --info: #4dabf7;
+  
+  --success-bg: rgba(0, 210, 255, 0.1);
+  --warning-bg: rgba(255, 185, 70, 0.1);
+  --error-bg: rgba(255, 71, 87, 0.1);
+  --info-bg: rgba(77, 171, 247, 0.1);
+  
+  --overlay: rgba(0, 0, 0, 0.6);
+  --modal-bg: var(--bg-tertiary);
+}
+
+/* Estilos globales mejorados */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-body {
+html {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #f8fafc;
-  color: #334155;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Componentes personalizados */
+body {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin: 0;
+  padding: 0;
+}
+
+/* Forzar variables en toda la aplicación */
+#root {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* Asegurar que las variables CSS tengan prioridad sobre Tailwind */
+.dark body,
+.dark #root,
+.dark .bg-primary {
+  background-color: var(--bg-primary) !important;
+}
+
+.dark .bg-secondary {
+  background-color: var(--bg-secondary) !important;
+}
+
+.dark .bg-tertiary {
+  background-color: var(--bg-tertiary) !important;
+}
+
+.dark .text-primary {
+  color: var(--text-primary) !important;
+}
+
+.dark .text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+.dark .border-primary {
+  border-color: var(--border-primary) !important;
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+/* Componentes personalizados mejorados */
 .btn-primary {
-  @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  @apply font-medium py-2.5 px-4 rounded-lg transition-all duration-200;
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 2px 4px var(--shadow-light);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px var(--shadow-medium);
 }
 
 .btn-secondary {
-  @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  @apply font-medium py-2.5 px-4 rounded-lg transition-all duration-200;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-quaternary);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
 }
 
 .card {
-  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px var(--shadow-light);
+  padding: 24px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 16px var(--shadow-medium);
+  transform: translateY(-2px);
 }
 
 .input-field {
-  @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  @apply w-full px-4 py-3 rounded-lg transition-all duration-200;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  font-size: 14px;
 }
 
+.input-field:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(123, 104, 238, 0.1);
+}
+
+.input-field::placeholder {
+  color: var(--text-muted);
+}
+
+/* Select especial para temas */
+select option {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Estilos para elementos de formulario en ambos temas */
+select {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(123, 104, 238, 0.1);
+}
+
+/* Badges mejorados */
 .badge {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  @apply inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold;
+  letter-spacing: 0.025em;
+  transition: all 0.2s ease;
 }
 
 .badge-success {
-  @apply badge bg-green-100 text-green-800;
+  background-color: var(--success-bg);
+  color: var(--success);
+  border: 1px solid transparent;
 }
 
 .badge-warning {
-  @apply badge bg-yellow-100 text-yellow-800;
+  background-color: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid transparent;
 }
 
 .badge-error {
-  @apply badge bg-red-100 text-red-800;
+  background-color: var(--error-bg);
+  color: var(--error);
+  border: 1px solid transparent;
 }
 
 .badge-info {
-  @apply badge bg-blue-100 text-blue-800;
+  background-color: var(--info-bg);
+  color: var(--info);
+  border: 1px solid transparent;
+}
+
+/* Estados interactivos mejorados */
+.interactive {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.interactive:hover {
+  transform: translateY(-1px);
+}
+
+.interactive:active {
+  transform: translateY(0);
+}
+
+/* Sidebar específico */
+.sidebar {
+  background-color: var(--bg-primary);
+  border-right: 1px solid var(--border-primary);
+  box-shadow: 2px 0 12px var(--shadow-light);
+}
+
+/* Top navbar específico */
+.top-navbar {
+  background-color: var(--bg-primary);
+  border-bottom: 1px solid var(--border-primary);
+  box-shadow: 0 1px 8px var(--shadow-light);
+}
+
+/* Estados de carga */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-tertiary) 25%,
+    var(--bg-quaternary) 50%,
+    var(--bg-tertiary) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Dropdown mejorado */
+.dropdown {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px var(--shadow-medium);
+  backdrop-filter: blur(20px);
+}
+
+.dropdown-item {
+  @apply px-4 py-3 transition-colors duration-150;
+  color: var(--text-secondary);
+}
+
+.dropdown-item:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* Modal overlay */
+.modal-overlay {
+  background-color: var(--overlay);
+  backdrop-filter: blur(4px);
+}
+
+.modal {
+  background-color: var(--modal-bg);
+  border: 1px solid var(--border-primary);
+  border-radius: 16px;
+  box-shadow: 0 16px 64px var(--shadow-heavy);
+}
+
+/* Animaciones suaves */
+.fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-in {
+  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Estados activos para navegación */
+.nav-active {
+  background: linear-gradient(135deg, 
+    rgba(123, 104, 238, 0.15) 0%, 
+    rgba(253, 113, 175, 0.15) 100%);
+  border-left: 3px solid var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.nav-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+}
+
+/* Focus visible para accesibilidad */
+.focus-visible:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Utilidades de texto */
+.text-gradient {
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Media queries para responsive */
+@media (max-width: 768px) {
+  .card {
+    padding: 16px;
+    border-radius: 8px;
+  }
+  
+  .btn-primary, .btn-secondary {
+    @apply py-2 px-3 text-sm;
+  }
+}
+
+/* Print styles */
+@media print {
+  * {
+    background: transparent !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
 }
