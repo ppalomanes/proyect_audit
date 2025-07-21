@@ -14,9 +14,31 @@ import React, { useEffect } from 'react';
 import Sidebar from './Sidebar';
 import TopNavbar from './TopNavbar';
 import { useSidebarState } from '../../hooks/useSidebarState';
+import { useAuthStore } from '../../domains/auth/authStore';
 
 const MainLayout = ({ children }) => {
   const { isCollapsed, setIsCollapsed, isMobile } = useSidebarState();
+  const { isAuthenticated, user } = useAuthStore();
+
+  // 🛡️ Si no hay usuario autenticado, mostrar loading
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 mx-auto">
+            <div className="w-16 h-16 bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-secondary)] rounded-xl flex items-center justify-center shadow-lg animate-pulse">
+              <span className="text-white font-bold text-xl">PA</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="h-4 w-32 mx-auto rounded animate-pulse" style={{ backgroundColor: 'var(--bg-tertiary)' }}></div>
+            <div className="h-3 w-24 mx-auto rounded animate-pulse" style={{ backgroundColor: 'var(--bg-tertiary)' }}></div>
+          </div>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Cargando portal...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Cerrar sidebar en mobile al hacer clic fuera
   useEffect(() => {
@@ -52,7 +74,7 @@ const MainLayout = ({ children }) => {
   }, []);
 
   // Configuración de márgenes para el contenido principal
-  const contentMargin = isCollapsed ? 'ml-20' : 'ml-64';
+  const contentMargin = isCollapsed ? 'ml-16' : 'ml-72'; // Actualizado para ClickUp dimensions
   const topNavbarHeight = 'pt-16'; // 64px height del navbar
 
   return (
@@ -110,7 +132,7 @@ const MainLayout = ({ children }) => {
       )}
 
       {/* Estilos globales para el layout */}
-      <style jsx global>{`
+      <style>{`
         /* Asegurar que el scroll del contenido principal funcione correctamente */
         html {
           scroll-behavior: smooth;

@@ -2,7 +2,7 @@
 
 ## 🏗️ Arquitectura General Optimizada para Claude.md
 
-```
+```text
 /portal-auditorias/
 ├── 📄 PROJECT_OVERVIEW.md              # Claude.md Principal - Entrada única para Claude
 ├── 📄 .clauderc                        # Configuración de contexto para Claude
@@ -228,12 +228,14 @@
 ## 🎯 Principios de Organización para Claude.md
 
 ### 1. **Separación por Dominios de Negocio**
+
 - Cada dominio es autocontenido con su propio `Claude.md`
 - Facilita la localización rápida de contexto relevante
 - Reduce el ruido al solicitar información específica
 
 ### 2. **Jerarquía de Documentación Claude.md**
-```
+
+```text
 PROJECT_OVERVIEW.md              # Nivel 0: Vista general del sistema
 ├── /client/Claude.md            # Nivel 1: Resumen frontend
 ├── /server/Claude.md            # Nivel 1: Resumen backend
@@ -242,16 +244,19 @@ PROJECT_OVERVIEW.md              # Nivel 0: Vista general del sistema
 ```
 
 ### 3. **Nomenclatura Optimizada para Tokenización**
+
 - Uso de comillas invertidas para términos técnicos: `filename.js`, `functionName()`, `/api/endpoint`
 - Headers jerárquicos claros (H1, H2, H3)
 - Fragmentación semántica para facilitar RAG
 
 ### 4. **Modularidad y Escalabilidad**
+
 - Cada módulo puede desarrollarse independientemente
 - Fácil adición de nuevos dominios
 - Estructura preparada para microservicios futuros
 
 ### 5. **Integración CI/CD**
+
 - Scripts automatizados para generar/actualizar Claude.md
 - Validación de consistencia en pipeline
 - Sincronización automática con cambios de código

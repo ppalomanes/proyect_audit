@@ -1,0 +1,675 @@
+/* Font específica ClickUp */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* ============================================= */
+/* CLICKUP SIDEBAR COMPLETE STYLES */
+/* Replica exacta del diseño observado en las imágenes */
+/* ============================================= */
+
+/* Variables específicas de ClickUp */
+:root {
+  /* Colores ClickUp observados en las imágenes */
+  --clickup-sidebar-bg: #1a1f36;              /* Fondo azul oscuro principal */
+  --clickup-sidebar-bg-hover: #242949;        /* Fondo hover más claro */
+  --clickup-sidebar-text: #ffffff;            /* Texto blanco principal */
+  --clickup-sidebar-text-muted: #c2c6dc;      /* Texto gris claro secundario */
+  --clickup-sidebar-text-dim: #9aa0b8;        /* Texto muy apagado */
+  --clickup-sidebar-active: #4a90e2;          /* Azul activo/seleccionado */
+  --clickup-sidebar-active-bg: rgba(74, 144, 226, 0.15); /* Fondo elemento activo */
+  --clickup-sidebar-border: #2d3748;          /* Bordes sutiles */
+  --clickup-sidebar-badge: #ff4757;           /* Badges rojos para notificaciones */
+  
+  /* Medidas específicas ClickUp */
+  --clickup-sidebar-width-expanded: 280px;
+  --clickup-sidebar-width-collapsed: 64px;
+  --clickup-sidebar-header-height: 64px;
+  --clickup-sidebar-item-height: 40px;
+  --clickup-sidebar-padding: 16px;
+}
+
+/* Contenedor principal del sidebar */
+.clickup-sidebar {
+  background-color: var(--clickup-sidebar-bg);
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  color: var(--clickup-sidebar-text);
+  border-right: 1px solid var(--clickup-sidebar-border);
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+}
+
+.clickup-sidebar-expanded {
+  width: var(--clickup-sidebar-width-expanded);
+}
+
+.clickup-sidebar-collapsed {
+  width: var(--clickup-sidebar-width-collapsed);
+}
+
+/* Header del workspace */
+.clickup-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--clickup-sidebar-header-height);
+  padding: 0 var(--clickup-sidebar-padding);
+  border-bottom: 1px solid var(--clickup-sidebar-border);
+}
+
+.clickup-workspace-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.clickup-workspace-avatar {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #7B68EE 0%, #49CCF9 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.clickup-workspace-initial {
+  color: white;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.clickup-workspace-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.clickup-workspace-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--clickup-sidebar-text);
+  line-height: 1.2;
+  margin: 0;
+}
+
+.clickup-workspace-type {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--clickup-sidebar-text-muted);
+  line-height: 1.2;
+  margin: 0;
+}
+
+.clickup-collapse-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--clickup-sidebar-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.clickup-collapse-btn:hover {
+  background-color: var(--clickup-sidebar-bg-hover);
+  color: var(--clickup-sidebar-text);
+  transform: scale(1.05);
+}
+
+/* Navegación principal */
+.clickup-main-nav {
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clickup-nav-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: var(--clickup-sidebar-item-height);
+  padding: 0 12px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--clickup-sidebar-text);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+  text-align: left;
+}
+
+.clickup-nav-item:hover {
+  background-color: var(--clickup-sidebar-bg-hover);
+  color: var(--clickup-sidebar-text);
+}
+
+.clickup-nav-item-active {
+  background-color: var(--clickup-sidebar-active-bg);
+  color: var(--clickup-sidebar-active);
+  font-weight: 600;
+}
+
+.clickup-nav-item-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  background-color: var(--clickup-sidebar-active);
+  border-radius: 0 3px 3px 0;
+}
+
+.clickup-nav-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+
+.clickup-nav-label {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clickup-nav-badge {
+  background-color: var(--clickup-sidebar-badge);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Secciones de workspace */
+.clickup-workspace-sections {
+  flex: 1;
+  padding: 0 12px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--clickup-sidebar-border) transparent;
+}
+
+.clickup-workspace-sections::-webkit-scrollbar {
+  width: 6px;
+}
+
+.clickup-workspace-sections::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.clickup-workspace-sections::-webkit-scrollbar-thumb {
+  background: var(--clickup-sidebar-border);
+  border-radius: 3px;
+}
+
+.clickup-workspace-section {
+  margin-bottom: 16px;
+}
+
+.clickup-section-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--clickup-sidebar-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-align: left;
+}
+
+.clickup-section-header:hover {
+  background-color: var(--clickup-sidebar-bg-hover);
+  color: var(--clickup-sidebar-text);
+}
+
+.clickup-section-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.clickup-section-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.clickup-section-chevron {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.clickup-section-chevron-expanded {
+  transform: rotate(90deg);
+}
+
+/* Contenido de secciones */
+.clickup-section-content {
+  margin-top: 4px;
+  margin-left: 24px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.clickup-section-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--clickup-sidebar-text);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-align: left;
+  position: relative;
+}
+
+.clickup-section-item:hover {
+  background-color: var(--clickup-sidebar-bg-hover);
+}
+
+.clickup-section-item-active {
+  background-color: var(--clickup-sidebar-active-bg);
+  color: var(--clickup-sidebar-active);
+  font-weight: 600;
+}
+
+.clickup-section-item-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 20px;
+  background-color: var(--item-color, var(--clickup-sidebar-active));
+  border-radius: 0 2px 2px 0;
+}
+
+.clickup-section-item-icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.clickup-section-item-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Acciones de sección */
+.clickup-section-action {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--clickup-sidebar-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-align: left;
+  margin-top: 4px;
+}
+
+.clickup-section-action:hover {
+  background-color: var(--clickup-sidebar-bg-hover);
+  color: var(--clickup-sidebar-text);
+}
+
+.clickup-section-action-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.clickup-section-action-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Área de usuario */
+.clickup-user-area {
+  padding: var(--clickup-sidebar-padding);
+  border-top: 1px solid var(--clickup-sidebar-border);
+  position: relative;
+}
+
+.clickup-user-profile {
+  position: relative;
+}
+
+.clickup-user-profile-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--clickup-sidebar-text);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-align: left;
+}
+
+.clickup-user-profile-btn:hover {
+  background-color: var(--clickup-sidebar-bg-hover);
+}
+
+.clickup-user-profile-collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.clickup-user-profile-collapsed:hover {
+  background-color: var(--clickup-sidebar-bg-hover);
+}
+
+.clickup-user-avatar {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--accent-tertiary) 0%, var(--accent-primary) 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.clickup-user-avatar-small {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--accent-tertiary) 0%, var(--accent-primary) 100%);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.clickup-user-avatar span,
+.clickup-user-avatar-small span {
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.5px;
+}
+
+.clickup-user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.clickup-user-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--clickup-sidebar-text);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.clickup-user-role {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--clickup-sidebar-text-muted);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.clickup-user-chevron {
+  width: 16px;
+  height: 16px;
+  color: var(--clickup-sidebar-text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* Dropdown de usuario */
+.clickup-user-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 8px;
+  background-color: var(--clickup-sidebar-bg);
+  border: 1px solid var(--clickup-sidebar-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(20px);
+  overflow: hidden;
+  z-index: 50;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.clickup-user-dropdown-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--clickup-sidebar-border);
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.clickup-user-dropdown-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--clickup-sidebar-text);
+  line-height: 1.3;
+  margin: 0 0 4px 0;
+}
+
+.clickup-user-dropdown-email {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--clickup-sidebar-text-muted);
+  line-height: 1.3;
+  margin: 0;
+}
+
+.clickup-user-dropdown-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  color: var(--clickup-sidebar-text);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-align: left;
+}
+
+.clickup-user-dropdown-item:hover {
+  background-color: var(--clickup-sidebar-bg-hover);
+}
+
+.clickup-user-dropdown-item svg {
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.clickup-user-dropdown-divider {
+  height: 1px;
+  background-color: var(--clickup-sidebar-border);
+  margin: 4px 0;
+}
+
+.clickup-user-dropdown-logout:hover {
+  background-color: rgba(255, 71, 87, 0.1);
+  color: #ff4757;
+}
+
+/* Estados responsive para ClickUp Sidebar */
+@media (max-width: 768px) {
+  .clickup-sidebar {
+    transform: translateX(-100%);
+  }
+  
+  .clickup-sidebar.open {
+    transform: translateX(0);
+  }
+  
+  .clickup-sidebar-expanded {
+    width: 280px;
+  }
+  
+  .clickup-workspace-name {
+    font-size: 15px;
+  }
+  
+  .clickup-nav-item {
+    height: 44px;
+  }
+  
+  .clickup-nav-icon {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/* Light mode adaptación para ClickUp */
+.light .clickup-sidebar {
+  background-color: #ffffff;
+  border-right-color: #e5e7eb;
+}
+
+.light .clickup-workspace-name {
+  color: #1f2937;
+}
+
+.light .clickup-workspace-type {
+  color: #6b7280;
+}
+
+.light .clickup-nav-item {
+  color: #374151;
+}
+
+.light .clickup-nav-item:hover {
+  background-color: #f3f4f6;
+}
+
+.light .clickup-nav-item-active {
+  background-color: rgba(123, 104, 238, 0.1);
+  color: #7B68EE;
+}
+
+.light .clickup-section-header {
+  color: #6b7280;
+}
+
+.light .clickup-section-item {
+  color: #374151;
+}
+
+.light .clickup-user-dropdown {
+  background-color: #ffffff;
+  border-color: #e5e7eb;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Estados de focus para accesibilidad */
+.clickup-nav-item:focus-visible,
+.clickup-section-item:focus-visible,
+.clickup-user-profile-btn:focus-visible {
+  outline: 2px solid var(--clickup-sidebar-active);
+  outline-offset: 2px;
+}
+
+/* Animaciones específicas ClickUp */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading states específicos */
+.clickup-sidebar .animate-pulse {
+  animation: clickupPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes clickupPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Transiciones suaves específicas */
+.clickup-sidebar * {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}

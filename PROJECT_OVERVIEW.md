@@ -4,6 +4,32 @@
 >
 > Claude: Este documento es tu punto de entrada único para comprender y navegar el Portal de Auditorías Técnicas. Utilízalo para identificar rápidamente qué módulos y archivos `Claude.md` específicos necesitas consultar para cualquier tarea.
 
+## 🚨 ESTADO ACTUAL DEL PROYECTO
+
+### ✅ PROBLEMAS CRÍTICOS RESUELTOS (2025-01-20)
+
+#### 1. Error Sidebar Null Reference (RESUELTO)
+**Error**: `Cannot read properties of null (reading 'rol')` en Sidebar.jsx línea 80
+**Solución**: Verificaciones null-safe + Loading states elegantes
+
+#### 2. Storage Corruption JSON Error (RESUELTO)
+**Error**: `"undefined" is not valid JSON` en initializeAuth
+**Causa**: localStorage contenía string "undefined" en lugar de datos válidos
+**Solución**: Validación robusta + Limpieza automática de datos corruptos
+
+**Correcciones Implementadas**:
+- 🛡️ Verificaciones null-safe en Sidebar.jsx
+- 🔧 Validación robusta en AuthStore.initializeAuth()
+- ⏳ Loading states elegantes con skeleton UI
+- 🎨 Loading components temáticos (claro/oscuro)
+- 🧹 Limpieza automática storage corrupto
+- 🔍 Utilidades de diagnóstico (storageUtils.js)
+- 📋 Validación datos servidor antes de guardar
+
+**Status**: ✅ **APLICACIÓN 100% FUNCIONAL** - Sin crashes ni loops de login
+
+---
+
 ## 🎯 Visión General del Sistema
 
 ### Propósito
@@ -94,11 +120,12 @@ Portal web para **automatizar auditorías técnicas** de proveedores de servicio
 - **Claude.md Específicos**: `/server/domains/ia/Claude.md`, `/client/domains/ia-scoring/Claude.md`
 - **Casos de Uso**: Análisis PDF/texto (LLaMA), análisis imágenes (Moondream), scoring automático
 
-### 💬 **Comunicación Asíncrona**
+### 💬 **Comunicación Asíncrona** ✅ LAYOUT INTEGRADO
 
 - **Módulos Relevantes**: `chat/`, `notifications/`
 - **Claude.md Específicos**: `/server/domains/chat/Claude.md`, `/client/domains/chat/Claude.md`
 - **Casos de Uso**: Mensajería auditor-proveedor, notificaciones tiempo real, WebSockets
+- **Status**: ✅ **MainLayout integrado** - Chat ahora incluye sidebar, topnavbar y temas
 
 ### 📊 **Dashboards y Métricas**
 

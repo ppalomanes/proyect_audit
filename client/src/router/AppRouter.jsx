@@ -9,6 +9,10 @@ import DashboardsPage from '../domains/dashboards/DashboardsPage';
 import ETLProcessor from '../domains/etl/ETLProcessor';
 import AuditoriasPage from '../domains/auditorias/AuditoriasPage';
 import { ProtectedRoute, UserProfile } from '../domains/auth/components';
+import IAScoring from '../domains/ia-scoring/components/IAScoring';
+import AdminPage from '../domains/admin/AdminPage';
+import ChatPage from '../domains/chat/ChatPage';
+import ClickUpTestPage from '../ClickUpTestPage';
 
 // Nuevo layout con tema oscuro
 import { MainLayout } from '../components/layout';
@@ -92,18 +96,7 @@ const AppRouter = () => {
           element={
             <ProtectedRoute requiredRoles={['ADMIN', 'AUDITOR']}>
               <MainLayout>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-4">Módulo de IA Scoring</h1>
-                  <p className="text-gray-600 mb-6">
-                    Análisis automático de documentos con Ollama - Sistema de IA local
-                  </p>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-blue-800 mb-2">Estado del Módulo</h3>
-                    <p className="text-sm text-blue-700">
-                      🚧 En desarrollo - Próximamente disponible para análisis de documentos PDF e imágenes
-                    </p>
-                  </div>
-                </div>
+                <IAScoring />
               </MainLayout>
             </ProtectedRoute>
           } 
@@ -114,18 +107,7 @@ const AppRouter = () => {
           element={
             <ProtectedRoute requiredRoles={['ADMIN', 'AUDITOR', 'SUPERVISOR', 'PROVEEDOR']}>
               <MainLayout>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-4">Sistema de Chat</h1>
-                  <p className="text-gray-600 mb-6">
-                    Comunicación asíncrona entre auditores y proveedores
-                  </p>
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-yellow-800 mb-2">Próximamente</h3>
-                    <p className="text-sm text-yellow-700">
-                      💬 Mensajería en tiempo real con WebSockets y notificaciones push
-                    </p>
-                  </div>
-                </div>
+                <ChatPage />
               </MainLayout>
             </ProtectedRoute>
           } 
@@ -136,14 +118,14 @@ const AppRouter = () => {
           element={
             <ProtectedRoute requiredRoles={['ADMIN', 'AUDITOR', 'SUPERVISOR']}>
               <MainLayout>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-4">Reportes Avanzados</h1>
-                  <p className="text-gray-600 mb-6">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Reportes Avanzados</h1>
+                  <p className="text-gray-600 dark:text-gray-300 mb-6">
                     Generación de reportes ejecutivos y análisis comparativos
                   </p>
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-green-800 mb-2">En Planificación</h3>
-                    <p className="text-sm text-green-700">
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-green-800 dark:text-green-300 mb-2">En Planificación</h3>
+                    <p className="text-sm text-green-700 dark:text-green-400">
                       📊 Dashboards ejecutivos, exportación PDF y métricas comparativas
                     </p>
                   </div>
@@ -158,47 +140,7 @@ const AppRouter = () => {
           element={
             <ProtectedRoute requiredRole="ADMIN" showUnauthorized={true}>
               <MainLayout>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-4">Panel de Administración</h1>
-                  <p className="text-gray-600 mb-6">
-                    Gestión completa del sistema - Solo para administradores
-                  </p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* Gestión de Usuarios */}
-                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                      <h3 className="text-lg font-semibold text-purple-800 mb-2">👥 Usuarios</h3>
-                      <p className="text-sm text-purple-700 mb-3">
-                        Gestión de usuarios, roles y permisos del sistema
-                      </p>
-                      <button className="text-sm bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700 transition-colors">
-                        Gestionar
-                      </button>
-                    </div>
-                    
-                    {/* Configuración del Sistema */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h3 className="text-lg font-semibold text-blue-800 mb-2">⚙️ Sistema</h3>
-                      <p className="text-sm text-blue-700 mb-3">
-                        Configuración global, parámetros y variables del sistema
-                      </p>
-                      <button className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors">
-                        Configurar
-                      </button>
-                    </div>
-                    
-                    {/* Logs y Monitoreo */}
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                      <h3 className="text-lg font-semibold text-red-800 mb-2">📊 Monitoreo</h3>
-                      <p className="text-sm text-red-700 mb-3">
-                        Logs del sistema, métricas de performance y alertas
-                      </p>
-                      <button className="text-sm bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition-colors">
-                        Ver Logs
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <AdminPage />
               </MainLayout>
             </ProtectedRoute>
           } 
@@ -221,14 +163,14 @@ const AppRouter = () => {
           element={
             <ProtectedRoute>
               <MainLayout>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-4">Configuración de Usuario</h1>
-                  <p className="text-gray-600 mb-6">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Configuración de Usuario</h1>
+                  <p className="text-gray-600 dark:text-gray-300 mb-6">
                     Personaliza tu experiencia en el Portal de Auditorías
                   </p>
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-gray-800 mb-2">Próximamente</h3>
-                    <p className="text-sm text-gray-700">
+                  <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Próximamente</h3>
+                    <p className="text-sm text-gray-700 dark:text-gray-400">
                       ⚙️ Configuración de preferencias, notificaciones y tema
                     </p>
                   </div>
@@ -243,18 +185,30 @@ const AppRouter = () => {
           element={
             <ProtectedRoute>
               <MainLayout>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-4">Centro de Notificaciones</h1>
-                  <p className="text-gray-600 mb-6">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Centro de Notificaciones</h1>
+                  <p className="text-gray-600 dark:text-gray-300 mb-6">
                     Historial completo de notificaciones y alertas del sistema
                   </p>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-blue-800 mb-2">En Desarrollo</h3>
-                    <p className="text-sm text-blue-700">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">En Desarrollo</h3>
+                    <p className="text-sm text-blue-700 dark:text-blue-400">
                       🔔 Centro de notificaciones con filtros y gestión de preferencias
                     </p>
                   </div>
                 </div>
+              </MainLayout>
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Ruta de testing ClickUp Sidebar */}
+        <Route 
+          path="/clickup-test" 
+          element={
+            <ProtectedRoute requiredRole="ADMIN">
+              <MainLayout>
+                <ClickUpTestPage />
               </MainLayout>
             </ProtectedRoute>
           } 
