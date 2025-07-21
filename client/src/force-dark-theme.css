@@ -1,0 +1,137 @@
+/* CORRECCIÓN DEFINITIVA TEMA OSCURO - ALTA PRIORIDAD */
+
+/* Reset completo para tema oscuro */
+html.dark * {
+  --bg-primary: #1a1d23 !important;
+  --bg-secondary: #252932 !important;
+  --bg-tertiary: #2f3349 !important;
+  --bg-quaternary: #3c4043 !important;
+  --text-primary: #ffffff !important;
+  --text-secondary: #e1e5e9 !important;
+  --text-muted: #9aa0a6 !important;
+  --border-primary: #404854 !important;
+  --border-secondary: #2d3748 !important;
+  --border-hover: #4a5568 !important;
+}
+
+/* Forzar colores específicos para elementos problemáticos */
+html.dark body,
+html.dark #root {
+  background-color: #252932 !important;
+  color: #ffffff !important;
+}
+
+/* Chat específico - WorkspaceManager */
+html.dark .w-80 {
+  background-color: #1a1d23 !important;
+  border-right-color: #404854 !important;
+}
+
+/* Chat específico - Panel central */
+html.dark .flex-1.flex.flex-col.h-full,
+html.dark .h-full.rounded-xl.shadow-lg.overflow-hidden {
+  background-color: #1a1d23 !important;
+  border-color: #404854 !important;
+}
+
+/* Chat específico - Elementos con estilos inline */
+html.dark [style*="backgroundColor"] {
+  background-color: #1a1d23 !important;
+}
+
+html.dark [style*="var(--bg-primary)"] {
+  background-color: #1a1d23 !important;
+}
+
+html.dark [style*="var(--bg-secondary)"] {
+  background-color: #252932 !important;
+}
+
+html.dark [style*="var(--bg-tertiary)"] {
+  background-color: #2f3349 !important;
+}
+
+html.dark [style*="color: var(--text-primary)"] {
+  color: #ffffff !important;
+}
+
+html.dark [style*="color: var(--text-secondary)"] {
+  color: #e1e5e9 !important;
+}
+
+html.dark [style*="borderColor"] {
+  border-color: #404854 !important;
+}
+
+/* Mensajes del chat */
+html.dark .group.p-3.rounded-lg {
+  background-color: transparent !important;
+}
+
+html.dark .group.p-3.rounded-lg:hover {
+  background-color: #2f3349 !important;
+}
+
+/* Input del chat */
+html.dark .input-field {
+  background-color: #2f3349 !important;
+  border-color: #404854 !important;
+  color: #ffffff !important;
+}
+
+/* Tabs del canal */
+html.dark .px-6 > .flex.space-x-1 {
+  border-bottom-color: #404854 !important;
+}
+
+/* Archivos adjuntos */
+html.dark .p-3.rounded-lg.cursor-pointer {
+  background-color: #2f3349 !important;
+}
+
+/* Sidebar derecho */
+html.dark .w-80.flex.flex-col.h-full {
+  background-color: #1a1d23 !important;
+  border-left-color: #404854 !important;
+}
+
+/* Footer estadísticas */
+html.dark .mt-4.px-6.py-3.rounded-lg {
+  background-color: #2f3349 !important;
+  border-color: #404854 !important;
+}
+
+/* Forzar todos los elementos problemáticos */
+html.dark .bg-white,
+html.dark .dark\\:bg-gray-800,
+html.dark .bg-gray-50,
+html.dark .dark\\:bg-gray-700,
+html.dark .bg-gray-100,
+html.dark .dark\\:bg-gray-600 {
+  background-color: #1a1d23 !important;
+}
+
+html.dark .bg-gray-800 {
+  background-color: #1a1d23 !important;
+}
+
+html.dark .border-gray-200,
+html.dark .dark\\:border-gray-700,
+html.dark .border-gray-300,
+html.dark .dark\\:border-gray-600 {
+  border-color: #404854 !important;
+}
+
+html.dark .text-gray-900,
+html.dark .dark\\:text-white,
+html.dark .text-gray-800,
+html.dark .dark\\:text-gray-100 {
+  color: #ffffff !important;
+}
+
+html.dark .text-gray-600,
+html.dark .dark\\:text-gray-400,
+html.dark .text-gray-500,
+html.dark .dark\\:text-gray-300 {
+  color: #e1e5e9 !important;
+}
