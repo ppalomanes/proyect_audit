@@ -25,16 +25,6 @@ const requestLogger = (req, res, next) => {
   req.requestId = requestInfo.requestId;
   res.set('X-Request-ID', requestInfo.requestId);
 
-  // Capturar información del usuario si está autenticado
-  const originalNext = next;
-  next = (...args) => {
-    if (req.user) {
-      requestInfo.userId = req.user.id;
-      requestInfo.userRole = req.user.rol;
-    }
-    originalNext(...args);
-  };
-
   // Interceptar el final de la respuesta
   const originalSend = res.send;
   res.send = function(data) {
@@ -45,7 +35,9 @@ const requestLogger = (req, res, next) => {
       ...requestInfo,
       statusCode: res.statusCode,
       duration: duration,
-      responseSize: data ? Buffer.byteLength(data, 'utf8') : 0
+      responseSize: data ? Buffer.byteLength(data, 'utf8') : 0,
+      userId: req.user?.id,
+      userRole: req.user?.rol
     };
 
     // Log según el nivel apropiado
@@ -77,48 +69,13 @@ const logRequest = (info, req, responseData) => {
     message += ' - FILE_UPLOAD';
   }
 
-  // Información adicional para logging detallado
-  const logData = {
-    ...info,
-    ...(NODE_ENV === 'development' && {
-      headers: sanitizeHeaders(req.headers),
-      query: req.query,
-      params: req.params
-    })
-  };
-
   // Log según severidad
   if (isError) {
-    console.error(`🔴 ${message}`, logData);
-    
-    // Log del body de error si es relevante
-    if (NODE_ENV === 'development' && responseData) {
-      try {
-        const errorResponse = JSON.parse(responseData);
-        if (errorResponse.error) {
-          console.error(`   Error: ${errorResponse.error}`);
-          if (errorResponse.details) {
-            console.error(`   Details:`, errorResponse.details);
-          }
-        }
-      } catch (e) {
-        // No es JSON válido, ignorar
-      }
-    }
+    console.error(`🔴 ${message}`);
   } else if (isSlowRequest) {
-    console.warn(`🟡 SLOW REQUEST - ${message}`, logData);
+    console.warn(`🟡 SLOW REQUEST - ${message}`);
   } else if (NODE_ENV === 'development') {
     console.log(`🟢 ${message}`);
-  }
-
-  // Métricas especiales para endpoints críticos
-  if (isCriticalEndpoint(info.url)) {
-    console.log(`⚡ CRITICAL ENDPOINT - ${message}`, {
-      endpoint: info.url,
-      duration: info.duration,
-      userId: info.userId,
-      success: !isError
-    });
   }
 };
 
@@ -130,54 +87,17 @@ const generateRequestId = () => {
 };
 
 /**
- * Sanitizar headers sensibles para logging
+ * Middleware para logging de operaciones específicas
  */
-const sanitizeHeaders = (headers) => {
-  const sanitized = { ...headers };
-  
-  // Ocultar información sensible
-  if (sanitized.authorization) {
-    sanitized.authorization = 'Bearer [HIDDEN]';
-  }
-  if (sanitized.cookie) {
-    sanitized.cookie = '[HIDDEN]';
-  }
-  
-  return sanitized;
-};
-
-/**
- * Identificar endpoints críticos para monitoreo especial
- */
-const isCriticalEndpoint = (url) => {
-  const criticalPatterns = [
-    '/api/auth/login',
-    '/api/etl/process',
-    '/api/ia/analyze',
-    '/api/auditorias',
-    '/api/health'
-  ];
-  
-  return criticalPatterns.some(pattern => url.includes(pattern));
-};
-
-/**
- * Middleware para logging de errores específicos del dominio
- */
-const domainErrorLogger = (domain) => {
-  return (error, req, res, next) => {
-    console.error(`🚨 ${domain.toUpperCase()} ERROR:`, {
-      domain,
-      requestId: req.requestId,
+const operationLogger = (operationType) => {
+  return (req, res, next) => {
+    console.log(`📝 ${operationType.toUpperCase()} - ${req.method} ${req.originalUrl}`, {
+      operation: operationType,
       userId: req.user?.id,
-      error: error.message,
-      stack: NODE_ENV === 'development' ? error.stack : undefined,
-      url: req.originalUrl,
-      method: req.method,
+      requestId: req.requestId,
       timestamp: new Date().toISOString()
     });
-    
-    next(error);
+    next();
   };
 };
 
@@ -222,7 +142,7 @@ const performanceLogger = (operation, duration, threshold = 1000) => {
 
 module.exports = {
   requestLogger,
-  domainErrorLogger,
+  operationLogger,
   etlOperationLogger,
   iaOperationLogger,
   performanceLogger,

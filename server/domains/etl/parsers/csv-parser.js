@@ -153,7 +153,7 @@ class CSVParser {
   /**
    * Limpiar nombres de headers
    */
-  limpiarHeader(header) {
+  limpiarHeader = (header) => {
     if (!header || typeof header !== 'string') {
       return header;
     }
@@ -170,7 +170,7 @@ class CSVParser {
   /**
    * Transformar valores de celdas
    */
-  transformarValor(value, header) {
+  transformarValor = (value, header) => {
     if (value === null || value === undefined || value === '') {
       return null;
     }

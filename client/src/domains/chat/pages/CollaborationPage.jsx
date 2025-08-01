@@ -1,254 +1,229 @@
-import React, { useState, useEffect } from 'react';
+// /client/src/domains/chat/pages/CollaborationPage.jsx
+import React, { useEffect, useState } from 'react';
+import useAuthStore from '../../auth/authStore';
+import useChatStore from '../store/chatStore';
 import WorkspaceManager from '../components/workspace/WorkspaceManager';
 import ChannelInterface from '../components/channel/ChannelInterface';
-import RightSidebar from '../components/sidebar/RightSidebar';
+import ChannelTabs from '../components/channel/ChannelTabs';
+import ChatStatusBar from '../components/ChatStatusBar';
+import ConnectionStatus from '../components/ConnectionStatus';
+import ChatDiagnostics from '../components/ChatDiagnostics';
+import { Loader2, Wifi, WifiOff, AlertCircle, RefreshCw } from 'lucide-react';
 
 const CollaborationPage = () => {
-  const [selectedWorkspace, setSelectedWorkspace] = useState(null);
-  const [selectedChannel, setSelectedChannel] = useState(null);
-  const [showRightPanel, setShowRightPanel] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    // Detectar si es mobile
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
+  const { user } = useAuthStore();
+  const {
+    // Estado
+    connected,
+    connectionStatus,
+    loading,
+    error,
+    workspaces,
+    selectedWorkspace,
+    selectedChannel,
+    currentView,
+    chatSidebarOpen,
     
-    // Simular conexión WebSocket
-    const timer = setTimeout(() => {
-      setIsConnected(true);
-    }, 1000);
+    // Acciones
+    initializeSocket,
+    selectWorkspace,
+    selectChannel,
+    setCurrentView,
+    toggleChatSidebar,
+    disconnect,
+    reconnect,
+    getTotalUnreadCount,
+    getConnectionInfo
+  } = useChatStore();
 
-    return () => {
-      window.removeEventListener('resize', checkMobile);
-      clearTimeout(timer);
-    };
-  }, []);
+  const [showConnectionAlert, setShowConnectionAlert] = useState(false);
 
-  const handleWorkspaceSelect = (workspace) => {
-    setSelectedWorkspace(workspace);
-    // En mobile, cerrar sidebar al seleccionar
-    if (isMobile) {
-      setShowRightPanel(false);
+  // Inicializar conexión cuando el componente se monta
+  useEffect(() => {
+    if (user && !connected && connectionStatus === 'disconnected') {
+      console.log('🚀 Inicializando chat para usuario:', user.nombre);
+      initializeSocket(user);
     }
+
+    // Cleanup al desmontar
+    return () => {
+      if (connected) {
+        console.log('📌 Limpiando conexión al desmontar');
+        disconnect();
+      }
+    };
+  }, [user, connected, connectionStatus]);
+
+  // Mostrar alerta de conexión cuando hay problemas
+  useEffect(() => {
+    if (connectionStatus === 'error' || connectionStatus === 'disconnected') {
+      setShowConnectionAlert(true);
+      const timer = setTimeout(() => setShowConnectionAlert(false), 5000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowConnectionAlert(false);
+    }
+  }, [connectionStatus]);
+
+  // Handlers para workspace y canales
+  const handleWorkspaceSelect = (workspace) => {
+    selectWorkspace(workspace);
   };
 
   const handleChannelSelect = (channel) => {
-    setSelectedChannel(channel);
-    // En mobile, cerrar sidebar al seleccionar canal
-    if (isMobile) {
-      setShowRightPanel(false);
-    }
+    selectChannel(channel);
   };
 
-  const toggleRightPanel = () => {
-    setShowRightPanel(!showRightPanel);
+  const handleTabChange = (tab) => {
+    setCurrentView(tab);
   };
 
-  const getBreadcrumbs = () => {
-    const breadcrumbs = [
-      { label: 'Colaboración', href: '/chat' }
-    ];
-    
-    if (selectedWorkspace) {
-      breadcrumbs.push({
-        label: selectedWorkspace.nombre,
-        href: `/chat/workspace/${selectedWorkspace.id}`
-      });
-    }
-    
-    if (selectedChannel) {
-      breadcrumbs.push({
-        label: selectedChannel.nombre,
-        href: `/chat/workspace/${selectedWorkspace?.id}/channel/${selectedChannel.id}`
-      });
-    }
-    
-    return breadcrumbs;
-  };
+  // Loading inicial
+  if (loading && !workspaces.length) {
+    return (
+      <div className="flex items-center justify-center h-full" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin" style={{ color: 'var(--accent-primary)' }} />
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Inicializando chat colaborativo...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full" style={{ backgroundColor: 'var(--bg-primary)' }}>
       
-      {/* Header con estado de conexión */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
-              💬 Colaboración ClickUp-Style
-            </h1>
-            
-            {/* Breadcrumbs */}
-            <nav className="flex" aria-label="Breadcrumb">
-              <ol className="flex items-center space-x-2">
-                {getBreadcrumbs().map((crumb, index) => (
-                  <li key={index} className="flex items-center">
-                    {index > 0 && (
-                      <svg className="w-4 h-4 mx-2" fill="currentColor" viewBox="0 0 20 20" style={{ color: 'var(--text-muted)' }}>
-                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                    <span className={`text-sm ${
-                      index === getBreadcrumbs().length - 1
-                        ? 'font-medium'
-                        : 'hover:opacity-70 cursor-pointer'
-                    }`} style={{
-                      color: index === getBreadcrumbs().length - 1 
-                        ? 'var(--accent-primary)' 
-                        : 'var(--text-muted)'
-                    }}>
-                      {crumb.label}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </nav>
-          </div>
-          
-          {/* Estado conexión y controles */}
-          <div className="flex items-center space-x-4">
-            {/* Connection Status */}
-            <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                {isConnected ? 'Conectado' : 'Conectando...'}
-              </span>
-            </div>
-
-            {/* Mobile Menu Toggle */}
-            {isMobile && (
-              <button
-                onClick={() => setShowRightPanel(!showRightPanel)}
-                className="p-2 rounded-lg transition-all duration-200 hover:opacity-80"
-                style={{ 
-                  backgroundColor: 'var(--bg-tertiary)',
-                  color: 'var(--text-secondary)'
-                }}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-            )}
-          </div>
+      {/* Alerta de conexión */}
+      {showConnectionAlert && (
+        <div className="fixed top-4 right-4 z-50 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center space-x-2">
+          <AlertCircle className="w-4 h-4" />
+          <span className="text-sm">Problemas de conexión al chat</span>
         </div>
-      </div>
+      )}
 
-      {/* Main Content - Layout 3 columnas */}
-      <div className="flex-1 min-h-0">
-        <div className="h-full rounded-xl shadow-lg overflow-hidden bg-primary border-primary" style={{ 
-          backgroundColor: 'var(--bg-primary) !important',
-          border: '1px solid var(--border-primary) !important'
-        }}>
-          <div className="flex h-full">
-            
-            {/* Left Sidebar - WorkspaceManager */}
-            <div className={`${
-              isMobile 
-                ? `absolute inset-y-0 left-0 z-30 transform transition-transform duration-300 ${
-                    showRightPanel ? 'translate-x-0' : '-translate-x-full'
-                  }`
-                : 'relative'
-            }`}>
-              <WorkspaceManager
-                onWorkspaceSelect={handleWorkspaceSelect}
-                onChannelSelect={handleChannelSelect}
-                selectedWorkspace={selectedWorkspace}
-                selectedChannel={selectedChannel}
-              />
-            </div>
-
-            {/* Mobile Overlay */}
-            {isMobile && showRightPanel && (
-              <div 
-                className="absolute inset-0 z-20"
-                style={{ backgroundColor: 'var(--overlay)' }}
-                onClick={() => setShowRightPanel(false)}
-              />
-            )}
-
-            {/* Center Content - ChannelInterface */}
-            <div className="flex-1 flex flex-col min-w-0">
-              <ChannelInterface
-                selectedChannel={selectedChannel}
-                selectedWorkspace={selectedWorkspace}
-                onToggleRightPanel={toggleRightPanel}
-                showRightPanel={showRightPanel && !isMobile}
-              />
-            </div>
-
-            {/* Right Sidebar - RightSidebar */}
-            {showRightPanel && !isMobile && (
-              <RightSidebar
-                selectedChannel={selectedChannel}
-                selectedWorkspace={selectedWorkspace}
-                onClose={() => setShowRightPanel(false)}
-              />
-            )}
-
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Right Panel */}
-      {isMobile && showRightPanel && selectedChannel && (
-        <div className="absolute inset-y-0 right-0 w-80 shadow-lg z-30 transform transition-transform duration-300" style={{
-          backgroundColor: 'var(--bg-primary)',
-          borderLeft: '1px solid var(--border-primary)'
-        }}>
-          <RightSidebar
-            selectedChannel={selectedChannel}
+      {/* Sidebar de Workspaces - Solo mostrar si está abierto */}
+      {chatSidebarOpen && (
+        <div className="flex-shrink-0">
+          <WorkspaceManager
+            workspaces={workspaces}
             selectedWorkspace={selectedWorkspace}
-            onClose={() => setShowRightPanel(false)}
-            isMobile={true}
+            selectedChannel={selectedChannel}
+            onWorkspaceSelect={handleWorkspaceSelect}
+            onChannelSelect={handleChannelSelect}
+            loading={loading}
           />
         </div>
       )}
 
-      {/* Footer con estadísticas */}
-      <div className="mt-4 px-6 py-3 rounded-lg" style={{
-        backgroundColor: 'var(--bg-tertiary)',
-        border: '1px solid var(--border-primary)'
-      }}>
-        <div className="flex items-center justify-between text-sm" style={{ color: 'var(--text-secondary)' }}>
-          <div className="flex items-center space-x-6">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>Sistema operativo</span>
+      {/* Contenido Principal */}
+      <div className="flex-1 flex flex-col min-w-0">
+        
+        {/* Estado de Conexión - Solo mostrar si no está conectado */}
+        {!connected && (
+          <div className="flex-shrink-0 p-4">
+            <ConnectionStatus />
+          </div>
+        )}
+        
+        {/* Header con tabs del canal */}
+        {selectedChannel && (
+          <div className="flex-shrink-0" style={{ borderBottom: '1px solid var(--border-primary)' }}>
+            <ChannelTabs
+              channel={selectedChannel}
+              currentView={currentView}
+              onTabChange={handleTabChange}
+              onToggleSidebar={toggleChatSidebar}
+              sidebarOpen={chatSidebarOpen}
+            />
+          </div>
+        )}
+
+        {/* Contenido del Canal */}
+        <div className="flex-1 flex flex-col min-h-0">
+          {selectedChannel ? (
+            <ChannelInterface
+              channel={selectedChannel}
+              workspace={selectedWorkspace}
+              currentView={currentView}
+              connected={connected}
+            />
+          ) : (
+            // Estado sin canal seleccionado
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center max-w-md">
+                <div className="text-6xl mb-4">💬</div>
+                <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Bienvenido al Chat Colaborativo
+                </h3>
+                <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+                  Selecciona un espacio de trabajo y canal para comenzar a colaborar con tu equipo.
+                </p>
+                
+                {/* Botón de diagnóstico rápido */}
+                <div className="mb-4">
+                  <button
+                    onClick={() => {
+                      console.log('🔍 Diagnóstico rápido del chat:');
+                      console.log('Connected:', connected);
+                      console.log('Connection Status:', connectionStatus);
+                      console.log('Error:', error);
+                      console.log('Workspaces:', workspaces?.length || 0);
+                      console.log('User:', user);
+                      
+                      const token = localStorage.getItem('auth_token');
+                      console.log('Token presente:', !!token);
+                      
+                      // Intentar reconectar
+                      if (!connected && user) {
+                        console.log('🔄 Intentando reconectar...');
+                        initializeSocket(user);
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mr-2"
+                  >
+                    🔍 Diagnóstico & Reconectar
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      window.open('http://localhost:3001/health', '_blank');
+                    }}
+                    className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                  >
+                    🌐 Verificar Servidor
+                  </button>
+                </div>
+                {!chatSidebarOpen && (
+                  <button
+                    onClick={toggleChatSidebar}
+                    className="btn-primary"
+                  >
+                    Mostrar Espacios de Trabajo
+                  </button>
+                )}
+                
+                {/* Diagnóstico del Chat */}
+                {!connected && (
+                  <div className="mt-8">
+                    <ChatDiagnostics />
+                  </div>
+                )}
+              </div>
             </div>
-            
-            {selectedWorkspace && (
-              <div>
-                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                  {selectedWorkspace.nombre}
-                </span>
-                <span className="mx-2">•</span>
-                <span>{selectedWorkspace.participantes} miembros</span>
-              </div>
-            )}
-            
-            {selectedChannel && (
-              <div>
-                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                  {selectedChannel.nombre}
-                </span>
-                <span className="mx-2">•</span>
-                <span>{selectedChannel.participantes_online} online</span>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            <span>Portal de Auditorías Técnicas</span>
-            <span className="font-medium" style={{ color: 'var(--accent-primary)' }}>
-              v1.0.0
-            </span>
-          </div>
+          )}
+        </div>
+
+        {/* Status Bar */}
+        <div className="flex-shrink-0">
+          <ChatStatusBar
+            connected={connected}
+            connectionStatus={connectionStatus}
+            workspace={selectedWorkspace}
+            channel={selectedChannel}
+            unreadCount={getTotalUnreadCount()}
+          />
         </div>
       </div>
     </div>

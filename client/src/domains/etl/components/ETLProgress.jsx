@@ -1,364 +1,308 @@
-import React, { useEffect, useState } from 'react';
+// ETLProgress.jsx - Componente para mostrar progreso de procesamiento ETL
+// Portal de Auditorías Técnicas
 
-const ETLProgress = ({ 
-  jobId, 
-  isProcessing, 
-  onStatusUpdate,
-  onComplete,
-  onError 
-}) => {
-  const [status, setStatus] = useState(null);
-  const [progress, setProgress] = useState(0);
-  const [currentStage, setCurrentStage] = useState('');
-  const [timeElapsed, setTimeElapsed] = useState(0);
-  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(null);
+import React, { useEffect } from 'react';
+import { 
+  ClockIcon,
+  CheckCircleIcon,
+  ExclamationCircleIcon,
+  XCircleIcon,
+  ArrowPathIcon,
+  ChartBarIcon,
+  DocumentTextIcon
+} from '@heroicons/react/24/outline';
+import useETLStore from '../etlStore';
+import etlService from '../services/etlService';
 
-  const stages = [
-    { id: 'PARSING', name: 'Analizando archivo', icon: '📄', color: 'var(--info)' },
-    { id: 'FIELD_DETECTION', name: 'Detectando campos', icon: '🔍', color: 'var(--info)' },
-    { id: 'NORMALIZATION', name: 'Normalizando datos', icon: '⚙️', color: 'var(--warning)' },
-    { id: 'VALIDATION', name: 'Validando reglas', icon: '✅', color: 'var(--warning)' },
-    { id: 'SCORING', name: 'Calculando scores', icon: '📊', color: 'var(--accent-primary)' },
-    { id: 'PERSISTENCE', name: 'Guardando resultados', icon: '💾', color: 'var(--success)' },
-    { id: 'COMPLETED', name: 'Procesamiento completado', icon: '🎉', color: 'var(--success)' }
-  ];
+const ETLProgress = ({ jobId, onComplete }) => {
+  const {
+    currentJob,
+    fetchJobStatus,
+    stopJobPolling
+  } = useETLStore();
 
   useEffect(() => {
-    let interval;
-    let timeInterval;
-
-    if (isProcessing && jobId) {
-      // Simular progreso (en implementación real, consultaría el backend)
-      interval = setInterval(async () => {
+    if (jobId && !currentJob) {
+      // Iniciar seguimiento del job
+      const interval = setInterval(async () => {
         try {
-          // En implementación real:
-          // const response = await api.get(`/etl/jobs/${jobId}/status`);
-          // const statusData = response.data;
-          
-          // Simulación del progreso
-          setProgress(prev => {
-            const newProgress = Math.min(prev + Math.random() * 15, 100);
-            
-            // Actualizar etapa según progreso
-            if (newProgress < 15) {
-              setCurrentStage('PARSING');
-            } else if (newProgress < 30) {
-              setCurrentStage('FIELD_DETECTION');
-            } else if (newProgress < 50) {
-              setCurrentStage('NORMALIZATION');
-            } else if (newProgress < 70) {
-              setCurrentStage('VALIDATION');
-            } else if (newProgress < 85) {
-              setCurrentStage('SCORING');
-            } else if (newProgress < 100) {
-              setCurrentStage('PERSISTENCE');
-            } else {
-              setCurrentStage('COMPLETED');
-              clearInterval(interval);
-              onComplete?.();
-            }
-            
-            return newProgress;
-          });
+          await fetchJobStatus(jobId);
         } catch (error) {
-          console.error('Error checking ETL status:', error);
-          onError?.(error);
+          console.error('Error fetching job status:', error);
           clearInterval(interval);
         }
-      }, 1000);
+      }, 2000);
 
-      // Timer para tiempo transcurrido
-      timeInterval = setInterval(() => {
-        setTimeElapsed(prev => prev + 1);
-      }, 1000);
+      return () => clearInterval(interval);
     }
+  }, [jobId, currentJob, fetchJobStatus]);
 
-    return () => {
-      if (interval) clearInterval(interval);
-      if (timeInterval) clearInterval(timeInterval);
-    };
-  }, [isProcessing, jobId, onComplete, onError]);
+  useEffect(() => {
+    if (currentJob && ['COMPLETADO', 'ERROR', 'CANCELADO'].includes(currentJob.estado)) {
+      stopJobPolling();
+      if (onComplete) {
+        onComplete(currentJob);
+      }
+    }
+  }, [currentJob, stopJobPolling, onComplete]);
 
-  const getCurrentStageIndex = () => {
-    return stages.findIndex(stage => stage.id === currentStage);
-  };
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
-  };
-
-  const getProgressPercentage = () => {
-    const stageIndex = getCurrentStageIndex();
-    const stageProgress = (progress % (100 / stages.length)) / (100 / stages.length) * 100;
-    return ((stageIndex / stages.length) * 100) + (stageProgress / stages.length);
-  };
-
-  if (!isProcessing && progress === 0) {
-    return null;
+  if (!currentJob) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <ArrowPathIcon className="w-6 h-6 text-gray-400 animate-spin" />
+        <span className="ml-2 text-gray-600">Cargando estado del procesamiento...</span>
+      </div>
+    );
   }
 
+  const getStatusIcon = (estado) => {
+    switch (estado) {
+      case 'COMPLETADO':
+        return <CheckCircleIcon className="w-6 h-6 text-green-600" />;
+      case 'ERROR':
+        return <XCircleIcon className="w-6 h-6 text-red-600" />;
+      case 'CANCELADO':
+        return <ExclamationCircleIcon className="w-6 h-6 text-gray-600" />;
+      default:
+        return <ArrowPathIcon className="w-6 h-6 text-blue-600 animate-spin" />;
+    }
+  };
+
+  const getStatusColor = (estado) => {
+    return etlService.getStatusColor(estado);
+  };
+
+  const getProgressSteps = () => {
+    const steps = [
+      { key: 'INICIADO', label: 'Iniciado', icon: DocumentTextIcon },
+      { key: 'PARSEANDO', label: 'Analizando archivo', icon: DocumentTextIcon },
+      { key: 'NORMALIZANDO', label: 'Normalizando datos', icon: ArrowPathIcon },
+      { key: 'VALIDANDO', label: 'Validando reglas', icon: CheckCircleIcon },
+      { key: 'SCORING', label: 'Calculando scoring', icon: ChartBarIcon },
+      { key: 'COMPLETADO', label: 'Completado', icon: CheckCircleIcon }
+    ];
+
+    const currentStepIndex = steps.findIndex(step => step.key === currentJob.estado);
+    
+    return steps.map((step, index) => ({
+      ...step,
+      status: index < currentStepIndex ? 'completed' : 
+              index === currentStepIndex ? 'current' : 'pending'
+    }));
+  };
+
+  const steps = getProgressSteps();
+
   return (
-    <div 
-      className="border rounded-xl p-6"
-      style={{
-        backgroundColor: 'var(--bg-primary)',
-        borderColor: 'var(--border-primary)'
-      }}
-    >
-      <div className="flex items-center justify-between mb-6">
-        <h3 
-          className="text-lg font-semibold flex items-center space-x-2"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          <span>🔄</span>
-          <span>Progreso de Procesamiento ETL</span>
-        </h3>
-        
-        <div className="text-right text-sm">
-          <div 
-            className="font-medium"
-            style={{ color: 'var(--text-primary)' }}
-          >
-            {Math.round(progress)}%
-          </div>
-          <div 
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            {timeElapsed > 0 && `⏱️ ${formatTime(timeElapsed)}`}
-          </div>
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="mb-6">
-        <div 
-          className="w-full h-3 rounded-full overflow-hidden"
-          style={{ backgroundColor: 'var(--bg-tertiary)' }}
-        >
-          <div 
-            className="h-full transition-all duration-500 ease-out rounded-full"
-            style={{
-              width: `${progress}%`,
-              background: `linear-gradient(90deg, var(--accent-primary), var(--accent-secondary))`
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Current Stage */}
-      {currentStage && (
-        <div 
-          className="mb-6 p-4 rounded-lg"
-          style={{
-            backgroundColor: 'var(--info-bg)',
-            borderColor: 'var(--info)'
-          }}
-        >
+    <div className="w-full max-w-4xl mx-auto space-y-6">
+      {/* Header con estado actual */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="text-2xl">
-              {stages.find(s => s.id === currentStage)?.icon}
-            </div>
+            {getStatusIcon(currentJob.estado)}
             <div>
-              <div 
-                className="font-medium"
-                style={{ color: 'var(--info)' }}
-              >
-                {stages.find(s => s.id === currentStage)?.name}
-              </div>
-              <div 
-                className="text-sm"
-                style={{ color: 'var(--info)' }}
-              >
-                Procesando datos del parque informático...
-              </div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Procesamiento ETL
+              </h3>
+              <p className="text-sm text-gray-600">
+                Job ID: {currentJob.job_id || jobId}
+              </p>
             </div>
           </div>
+          
+          <div className="text-right">
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(currentJob.estado)}`}>
+              {currentJob.estado}
+            </span>
+          </div>
         </div>
-      )}
 
-      {/* Stages Timeline */}
-      <div className="space-y-3">
-        <h4 
-          className="text-sm font-medium"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          📋 Etapas del Procesamiento
-        </h4>
-        
-        <div className="space-y-2">
-          {stages.map((stage, index) => {
-            const isCompleted = getCurrentStageIndex() > index;
-            const isCurrent = stage.id === currentStage;
-            const isPending = getCurrentStageIndex() < index;
-
-            return (
+        {/* Barra de progreso general */}
+        {currentJob.progreso && (
+          <div className="mt-4">
+            <div className="flex justify-between text-sm text-gray-600 mb-1">
+              <span>Progreso General</span>
+              <span>{currentJob.progreso.porcentaje || 0}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
-                key={stage.id}
-                className="flex items-center space-x-3 p-3 rounded-lg transition-all duration-300"
-                style={{
-                  backgroundColor: isCurrent 
-                    ? 'rgba(123, 104, 238, 0.1)' 
-                    : isCompleted 
-                      ? 'var(--success-bg)' 
-                      : 'var(--bg-secondary)',
-                  borderLeft: `3px solid ${
-                    isCurrent 
-                      ? 'var(--accent-primary)' 
-                      : isCompleted 
-                        ? 'var(--success)' 
-                        : 'var(--border-primary)'
-                  }`
-                }}
-              >
-                <div 
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all duration-300 ${
-                    isCurrent ? 'animate-pulse' : ''
-                  }`}
-                  style={{
-                    backgroundColor: isCurrent 
-                      ? 'var(--accent-primary)' 
-                      : isCompleted 
-                        ? 'var(--success)' 
-                        : 'var(--bg-tertiary)',
-                    color: isCurrent || isCompleted ? 'white' : 'var(--text-secondary)'
-                  }}
-                >
-                  {isCompleted ? '✓' : isCurrent ? stage.icon : index + 1}
+                className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                style={{ width: `${currentJob.progreso.porcentaje || 0}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Pasos del proceso */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h4 className="text-md font-semibold text-gray-900 mb-4">Proceso de ETL</h4>
+        
+        <div className="space-y-4">
+          {steps.map((step, index) => {
+            const Icon = step.icon;
+            return (
+              <div key={step.key} className="flex items-center space-x-4 relative">
+                {/* Icono del paso */}
+                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                  step.status === 'completed' ? 'bg-green-100' :
+                  step.status === 'current' ? 'bg-blue-100' : 'bg-gray-100'
+                }`}>
+                  <Icon className={`w-4 h-4 ${
+                    step.status === 'completed' ? 'text-green-600' :
+                    step.status === 'current' ? 'text-blue-600' : 'text-gray-400'
+                  }`} />
                 </div>
                 
-                <div className="flex-1">
+                {/* Información del paso */}
+                <div className="flex-grow">
+                  <p className={`font-medium ${
+                    step.status === 'completed' ? 'text-green-800' :
+                    step.status === 'current' ? 'text-blue-800' : 'text-gray-500'
+                  }`}>
+                    {step.label}
+                  </p>
+                  
+                  {/* Mostrar detalles si es el paso actual */}
+                  {step.status === 'current' && currentJob.progreso && (
+                    <div className="mt-1 text-sm text-gray-600">
+                      {currentJob.progreso.registros_procesados && (
+                        <span>
+                          {currentJob.progreso.registros_procesados} de {currentJob.progreso.registros_total || '?'} registros
+                        </span>
+                      )}
+                      {currentJob.progreso.tiempo_transcurrido && (
+                        <span className="ml-3">
+                          Tiempo: {currentJob.progreso.tiempo_transcurrido}
+                        </span>
+                      )}
+                      {currentJob.progreso.tiempo_estimado_restante && (
+                        <span className="ml-3">
+                          Restante: {currentJob.progreso.tiempo_estimado_restante}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Línea conectora */}
+                {index < steps.length - 1 && (
                   <div 
-                    className={`text-sm font-medium ${isCurrent ? 'font-semibold' : ''}`}
-                    style={{
-                      color: isCurrent 
-                        ? 'var(--accent-primary)' 
-                        : isCompleted 
-                          ? 'var(--success)' 
-                          : 'var(--text-secondary)'
-                    }}
-                  >
-                    {stage.name}
-                  </div>
-                  
-                  {isCurrent && (
-                    <div 
-                      className="text-xs mt-1"
-                      style={{ color: 'var(--accent-primary)' }}
-                    >
-                      En progreso...
-                    </div>
-                  )}
-                  
-                  {isCompleted && (
-                    <div 
-                      className="text-xs mt-1"
-                      style={{ color: 'var(--success)' }}
-                    >
-                      Completado
-                    </div>
-                  )}
-                </div>
-                
-                <div className="text-lg">
-                  {stage.icon}
-                </div>
+                    className={`absolute w-0.5 h-4 ${
+                      step.status === 'completed' ? 'bg-green-300' : 'bg-gray-200'
+                    }`} 
+                    style={{ left: '15px', top: '32px' }} 
+                  />
+                )}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Processing Stats */}
-      {isProcessing && progress > 20 && (
-        <div 
-          className="mt-6 pt-6 border-t grid grid-cols-2 md:grid-cols-4 gap-4"
-          style={{ borderColor: 'var(--border-primary)' }}
-        >
-          <div className="text-center">
-            <div 
-              className="text-lg font-bold"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              {Math.floor(progress * 2.45)}
-            </div>
-            <div 
-              className="text-xs"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              Registros procesados
-            </div>
-          </div>
+      {/* Estadísticas del procesamiento */}
+      {currentJob.estadisticas && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h4 className="text-md font-semibold text-gray-900 mb-4">Estadísticas</h4>
           
-          <div className="text-center">
-            <div 
-              className="text-lg font-bold"
-              style={{ color: 'var(--success)' }}
-            >
-              {Math.floor(progress * 2.2)}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {currentJob.estadisticas.registros_validos || 0}
+              </div>
+              <div className="text-sm text-gray-600">Registros Válidos</div>
             </div>
-            <div 
-              className="text-xs"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              Válidos
+            
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">
+                {currentJob.estadisticas.registros_con_advertencias || 0}
+              </div>
+              <div className="text-sm text-gray-600">Con Advertencias</div>
             </div>
-          </div>
-          
-          <div className="text-center">
-            <div 
-              className="text-lg font-bold"
-              style={{ color: 'var(--warning)' }}
-            >
-              {Math.floor(progress * 0.15)}
+            
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600">
+                {currentJob.estadisticas.registros_con_errores || 0}
+              </div>
+              <div className="text-sm text-gray-600">Con Errores</div>
             </div>
-            <div 
-              className="text-xs"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              Advertencias
-            </div>
-          </div>
-          
-          <div className="text-center">
-            <div 
-              className="text-lg font-bold"
-              style={{ color: 'var(--error)' }}
-            >
-              {Math.floor(progress * 0.05)}
-            </div>
-            <div 
-              className="text-xs"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              Errores
+            
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {currentJob.estadisticas.score_calidad_promedio || 0}%
+              </div>
+              <div className="text-sm text-gray-600">Score Promedio</div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Completion Message */}
-      {progress >= 100 && (
-        <div 
-          className="mt-6 p-4 rounded-lg text-center"
-          style={{
-            backgroundColor: 'var(--success-bg)',
-            borderColor: 'var(--success)'
-          }}
-        >
-          <div className="text-2xl mb-2">🎉</div>
-          <div 
-            className="font-semibold"
-            style={{ color: 'var(--success)' }}
-          >
-            ¡Procesamiento Completado Exitosamente!
+      {/* Información del archivo */}
+      {currentJob.archivo && (
+        <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <div className="flex items-center space-x-4">
+              <span>
+                📁 {currentJob.archivo.nombre}
+              </span>
+              <span>
+                📊 {currentJob.archivo.tipo}
+              </span>
+              {currentJob.archivo.tamaño_mb && (
+                <span>
+                  💾 {currentJob.archivo.tamaño_mb} MB
+                </span>
+              )}
+            </div>
+            
+            {currentJob.progreso?.tiempo_transcurrido && (
+              <div className="flex items-center space-x-2">
+                <ClockIcon className="w-4 h-4" />
+                <span>{currentJob.progreso.tiempo_transcurrido}</span>
+              </div>
+            )}
           </div>
-          <div 
-            className="text-sm mt-1"
-            style={{ color: 'var(--success)' }}
-          >
-            Los datos del parque informático han sido procesados y están listos para análisis
+        </div>
+      )}
+
+      {/* Acciones según el estado */}
+      {['COMPLETADO', 'ERROR'].includes(currentJob.estado) && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-md font-semibold text-gray-900">
+                {currentJob.estado === 'COMPLETADO' ? '¡Procesamiento Completado!' : 'Error en Procesamiento'}
+              </h4>
+              <p className="text-sm text-gray-600 mt-1">
+                {currentJob.estado === 'COMPLETADO' 
+                  ? 'Los datos han sido procesados y están listos para revisión'
+                  : 'Ocurrió un error durante el procesamiento. Revisa los detalles.'
+                }
+              </p>
+            </div>
+            
+            <div className="flex space-x-3">
+              {currentJob.estado === 'COMPLETADO' && (
+                <button
+                  onClick={() => onComplete && onComplete(currentJob)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Ver Resultados
+                </button>
+              )}
+              
+              {currentJob.estado === 'ERROR' && (
+                <button
+                  onClick={() => {
+                    // Lógica para reintentar o ver detalles del error
+                    console.log('Ver detalles del error');
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Ver Detalles del Error
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

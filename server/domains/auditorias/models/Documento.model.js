@@ -1,421 +1,209 @@
-/**
- * Modelo Documento - Gestión de Documentos
- * Portal de Auditorías Técnicas
- */
-
 const { DataTypes } = require('sequelize');
+const { sequelize } = require('../../../config/database');
 
-const defineDocumento = (sequelize) => {
-  const Documento = sequelize.define('Documento', {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-      allowNull: false
-    },
-
-    // Relaciones
-    auditoria_id: {
-      type: DataTypes.UUID,
-      allowNull: false
-    },
-
-    documento_padre_id: {
-      type: DataTypes.UUID,
-      allowNull: true // Para versionado
-    },
-
-    // Información del archivo
-    nombre_original: {
-      type: DataTypes.STRING(255),
-      allowNull: false
-    },
-
-    nombre_archivo: {
-      type: DataTypes.STRING(255),
-      allowNull: false // Nombre único en el sistema
-    },
-
-    ruta_archivo: {
-      type: DataTypes.STRING(500),
-      allowNull: false
-    },
-
-    url_publica: {
-      type: DataTypes.STRING(500),
-      allowNull: true
-    },
-
-    // Metadatos del archivo
-    tamaño_bytes: {
-      type: DataTypes.BIGINT,
-      allowNull: false
-    },
-
-    tipo_mime: {
-      type: DataTypes.STRING(100),
-      allowNull: false
-    },
-
-    extension: {
-      type: DataTypes.STRING(10),
-      allowNull: false
-    },
-
-    hash_archivo: {
-      type: DataTypes.STRING(64),
-      allowNull: true // SHA-256 para verificar integridad
-    },
-
-    // Clasificación y categorización
-    tipo_documento: {
-      type: DataTypes.ENUM,
-      values: [
-        'CERTIFICADO_CALIDAC',
-        'POLITICAS_SEGURIDAD',
-        'MANUAL_PROCEDIMIENTOS',
-        'CERTIFICADO_ISO',
-        'LICENCIAS_SOFTWARE',
-        'CONTRATOS_PROVEEDORES',
-        'DOCUMENTOS_TECNICOS',
-        'DIAGRAMAS_RED',
-        'INVENTARIO_HARDWARE',
-        'BACKUP_PROCEDURES',
-        'DISASTER_RECOVERY',
-        'PARQUE_INFORMATICO',
-        'OTRO'
-      ],
-      allowNull: false
-    },
-
-    categoria: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-
-    es_requerido: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true
-    },
-
-    // Estado del documento
-    estado: {
-      type: DataTypes.ENUM,
-      values: [
-        'SUBIDO',
-        'EN_VALIDACION',
-        'VALIDADO',
-        'RECHAZADO',
-        'REQUIERE_CORRECCION',
-        'OBSOLETO'
-      ],
-      allowNull: false,
-      defaultValue: 'SUBIDO'
-    },
-
-    // Validación y revisión
-    validado_por: {
-      type: DataTypes.UUID,
-      allowNull: true
-    },
-
-    fecha_validacion: {
-      type: DataTypes.DATE,
-      allowNull: true
-    },
-
-    observaciones_validacion: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-
-    // Scoring y análisis automático
-    score_completitud: {
-      type: DataTypes.DECIMAL(5, 2),
-      allowNull: true,
-      validate: {
-        min: 0.00,
-        max: 100.00
-      }
-    },
-
-    score_calidad: {
-      type: DataTypes.DECIMAL(5, 2),
-      allowNull: true,
-      validate: {
-        min: 0.00,
-        max: 100.00
-      }
-    },
-
-    analisis_ia: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      defaultValue: {}
-    },
-
-    palabras_clave_detectadas: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      defaultValue: []
-    },
-
-    // Versionado
-    version: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 1
-    },
-
-    es_version_actual: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true
-    },
-
-    motivo_nueva_version: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-
-    // Fechas importantes
-    fecha_documento: {
-      type: DataTypes.DATE,
-      allowNull: true // Fecha del documento según su contenido
-    },
-
-    fecha_vencimiento: {
-      type: DataTypes.DATE,
-      allowNull: true // Para certificados, licencias, etc.
-    },
-
-    // Metadatos adicionales
-    descripcion: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-
-    tags: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      defaultValue: []
-    },
-
-    confidencialidad: {
-      type: DataTypes.ENUM,
-      values: ['PUBLICO', 'INTERNO', 'CONFIDENCIAL', 'RESTRINGIDO'],
-      allowNull: false,
-      defaultValue: 'INTERNO'
-    },
-
-    // Procesamiento automático
-    procesado_ocr: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false
-    },
-
-    texto_extraido: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-
-    metadatos_procesamiento: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      defaultValue: {}
-    },
-
-    // Campos de auditoría
-    subido_por: {
-      type: DataTypes.UUID,
-      allowNull: false
-    },
-
-    actualizado_por: {
-      type: DataTypes.UUID,
-      allowNull: true
+const Documento = sequelize.define('Documento', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  auditoria_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'auditorias',
+      key: 'id'
     }
-  }, {
-    tableName: 'documentos',
-    timestamps: true,
-    paranoid: true,
-    createdAt: 'creado_en',
-    updatedAt: 'actualizado_en',
-    deletedAt: 'eliminado_en',
-    
-    indexes: [
-      {
-        fields: ['auditoria_id']
-      },
-      {
-        fields: ['tipo_documento']
-      },
-      {
-        fields: ['estado']
-      },
-      {
-        fields: ['subido_por']
-      },
-      {
-        fields: ['validado_por']
-      },
-      {
-        fields: ['es_version_actual']
-      },
-      {
-        fields: ['hash_archivo']
-      },
-      {
-        fields: ['fecha_vencimiento']
-      }
-    ],
-
-    scopes: {
-      activos: {
-        where: {
-          es_version_actual: true,
-          estado: {
-            [sequelize.Sequelize.Op.ne]: 'OBSOLETO'
-          }
-        }
-      },
-      
-      validados: {
-        where: {
-          estado: 'VALIDADO'
-        }
-      },
-      
-      pendientes: {
-        where: {
-          estado: {
-            [sequelize.Sequelize.Op.in]: ['SUBIDO', 'EN_VALIDACION']
-          }
-        }
-      },
-
-      porTipo: (tipo) => ({
-        where: {
-          tipo_documento: tipo
-        }
-      })
+  },
+  seccion: {
+    type: DataTypes.ENUM(
+      // Atención Presencial
+      'topologia',
+      'cuarto_tecnologia', 
+      'conectividad',
+      'energia',
+      'temperatura_ct',
+      'servidores',
+      'internet', 
+      'seguridad_informatica',
+      'personal_capacitado',
+      'escalamiento',
+      'informacion_entorno',
+      // Parque Informático
+      'parque_hardware',
+      'conteo_puestos'
+    ),
+    allowNull: false,
+    comment: 'Sección de la auditoría a la que pertenece'
+  },
+  nombre_original: {
+    type: DataTypes.STRING(255),
+    allowNull: false,
+    comment: 'Nombre original del archivo subido'
+  },
+  nombre_archivo: {
+    type: DataTypes.STRING(255),
+    allowNull: false,
+    comment: 'Nombre del archivo en el sistema'
+  },
+  ruta_archivo: {
+    type: DataTypes.STRING(500),
+    allowNull: false,
+    comment: 'Ruta completa del archivo en el sistema'
+  },
+  tamaño_bytes: {
+    type: DataTypes.BIGINT,
+    allowNull: false,
+    comment: 'Tamaño del archivo en bytes'
+  },
+  tipo_mime: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    comment: 'Tipo MIME del archivo'
+  },
+  extension: {
+    type: DataTypes.STRING(10),
+    allowNull: false,
+    comment: 'Extensión del archivo'
+  },
+  
+  // Control de versiones
+  version: {
+    type: DataTypes.STRING(10),
+    allowNull: false,
+    defaultValue: '1.0',
+    comment: 'Versión del documento'
+  },
+  version_mayor: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 1
+  },
+  version_menor: {
+    type: DataTypes.INTEGER,
+    allowNull: false, 
+    defaultValue: 0
+  },
+  
+  // Metadatos del documento
+  fecha_revision: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Fecha de última revisión del documento'
+  },
+  observaciones: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Observaciones del proveedor sobre el documento'
+  },
+  
+  // Estados y control
+  estado: {
+    type: DataTypes.ENUM('ACTIVO', 'HISTORICO', 'ELIMINADO'),
+    defaultValue: 'ACTIVO',
+    allowNull: false
+  },
+  es_obligatorio: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    comment: 'Indica si el documento es obligatorio para la sección'
+  },
+  validado: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+    comment: 'Null=pendiente, true=válido, false=inválido'
+  },
+  
+  // Resultados de validación
+  errores_validacion: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Errores encontrados en la validación'
+  },
+  score_calidad: {
+    type: DataTypes.DECIMAL(5, 2),
+    allowNull: true,
+    comment: 'Score de calidad del documento (0-100)'
+  },
+  
+  // Metadatos de carga
+  cargado_por: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'usuarios',
+      key: 'id'
     }
-  });
-
-  // Métodos de instancia
-  Documento.prototype.puedeSerValidado = function() {
-    return ['SUBIDO', 'EN_VALIDACION', 'REQUIERE_CORRECCION'].includes(this.estado);
-  };
-
-  Documento.prototype.validar = async function(validadorId, observaciones = null) {
-    if (!this.puedeSerValidado()) {
-      throw new Error('El documento no puede ser validado en su estado actual');
+  },
+  fecha_carga: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  },
+  ip_carga: {
+    type: DataTypes.STRING(45),
+    allowNull: true,
+    comment: 'IP desde la que se cargó el documento'
+  },
+  user_agent: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'User agent del navegador'
+  },
+  
+  // Hash para verificación de integridad
+  hash_archivo: {
+    type: DataTypes.STRING(64),
+    allowNull: true,
+    comment: 'Hash SHA-256 del archivo'
+  }
+}, {
+  tableName: 'documentos',
+  timestamps: true,
+  createdAt: 'fecha_carga',
+  updatedAt: false,
+  indexes: [
+    {
+      fields: ['auditoria_id', 'seccion', 'estado']
+    },
+    {
+      fields: ['seccion', 'es_obligatorio']
+    },
+    {
+      fields: ['estado', 'validado']
+    },
+    {
+      fields: ['cargado_por']
+    },
+    {
+      fields: ['fecha_carga']
+    },
+    {
+      unique: true,
+      fields: ['auditoria_id', 'seccion', 'version']
     }
+  ]
+});
 
-    this.estado = 'VALIDADO';
-    this.validado_por = validadorId;
-    this.fecha_validacion = new Date();
-    this.observaciones_validacion = observaciones;
-    
-    await this.save();
-  };
-
-  Documento.prototype.rechazar = async function(validadorId, motivo) {
-    this.estado = 'RECHAZADO';
-    this.validado_por = validadorId;
-    this.fecha_validacion = new Date();
-    this.observaciones_validacion = motivo;
-    
-    await this.save();
-  };
-
-  Documento.prototype.estaVencido = function() {
-    if (!this.fecha_vencimiento) return false;
-    return new Date() > new Date(this.fecha_vencimiento);
-  };
-
-  Documento.prototype.diasParaVencimiento = function() {
-    if (!this.fecha_vencimiento) return null;
-    
-    const ahora = new Date();
-    const vencimiento = new Date(this.fecha_vencimiento);
-    const diferencia = vencimiento.getTime() - ahora.getTime();
-    return Math.ceil(diferencia / (1000 * 3600 * 24));
-  };
-
-  Documento.prototype.generarNuevaVersion = async function(nuevoArchivo, motivo) {
-    // Marcar versión actual como no actual
-    this.es_version_actual = false;
-    await this.save();
-
-    // Crear nueva versión
-    const nuevaVersion = await this.constructor.create({
-      ...nuevoArchivo,
-      auditoria_id: this.auditoria_id,
-      documento_padre_id: this.documento_padre_id || this.id,
-      tipo_documento: this.tipo_documento,
-      version: this.version + 1,
-      motivo_nueva_version: motivo,
-      es_version_actual: true
-    });
-
-    return nuevaVersion;
-  };
-
-  Documento.prototype.getTamañoLegible = function() {
-    const bytes = this.tamaño_bytes;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    
-    if (bytes === 0) return '0 Bytes';
-    
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
-  };
-
-  // Métodos estáticos
-  Documento.buscarPorAuditoria = async function(auditoriaId) {
-    return await this.scope('activos').findAll({
-      where: { auditoria_id: auditoriaId },
-      order: [['tipo_documento', 'ASC'], ['creado_en', 'DESC']]
-    });
-  };
-
-  Documento.buscarPendientesValidacion = async function() {
-    return await this.scope('pendientes').findAll({
-      order: [['creado_en', 'ASC']]
-    });
-  };
-
-  Documento.buscarProximosAVencer = async function(dias = 30) {
-    const fechaLimite = new Date();
-    fechaLimite.setDate(fechaLimite.getDate() + dias);
-
-    return await this.findAll({
-      where: {
-        fecha_vencimiento: {
-          [sequelize.Sequelize.Op.between]: [new Date(), fechaLimite]
-        },
-        estado: 'VALIDADO'
-      },
-      order: [['fecha_vencimiento', 'ASC']]
-    });
-  };
-
-  Documento.buscarPorTipo = async function(tipo, auditoriaId = null) {
-    const where = { tipo_documento: tipo };
-    if (auditoriaId) {
-      where.auditoria_id = auditoriaId;
-    }
-
-    return await this.scope('activos').findAll({
-      where,
-      order: [['creado_en', 'DESC']]
-    });
-  };
-
-  return Documento;
+// Métodos de instancia
+Documento.prototype.obtenerTamañoHumano = function() {
+  const bytes = this.tamaño_bytes;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  
+  if (bytes === 0) return '0 Bytes';
+  
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
 };
 
-module.exports = defineDocumento;
+Documento.prototype.esVersionActual = function() {
+  return this.estado === 'ACTIVO';
+};
+
+// Métodos estáticos
+Documento.incrementarVersion = function(versionActual) {
+  const [mayor, menor] = versionActual.split('.').map(Number);
+  return `${mayor}.${menor + 1}`;
+};
+
+module.exports = Documento;

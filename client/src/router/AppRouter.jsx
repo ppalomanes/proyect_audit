@@ -1,232 +1,107 @@
-import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthStore } from '../domains/auth/authStore';
+// client/src/router/AppRouter.jsx
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import useAuthStore from "../domains/auth/authStore";
+import { ThemeProvider } from "../contexts/ThemeContext";
 
 // Components
-import AuthPage from '../domains/auth/AuthPage';
-import Dashboard from '../Dashboard';
-import DashboardsPage from '../domains/dashboards/DashboardsPage';
-import ETLProcessor from '../domains/etl/ETLProcessor';
-import AuditoriasPage from '../domains/auditorias/AuditoriasPage';
-import { ProtectedRoute, UserProfile } from '../domains/auth/components';
-import IAScoring from '../domains/ia-scoring/components/IAScoring';
-import AdminPage from '../domains/admin/AdminPage';
-import ChatPage from '../domains/chat/ChatPage';
-import ClickUpTestPage from '../ClickUpTestPage';
+import AuthPage from "../domains/auth/AuthPage";
+import MainLayout from "../components/layout/MainLayout";
+import Dashboard from "../Dashboard";
+import AuditoriasPage from "../domains/auditorias/AuditoriasPage";
+import AuditoriaDetallePage from "../domains/auditorias/AuditoriaDetallePage";
+import AuditoriaWizard from "../domains/auditorias/components/AuditoriaWizard";
+import ETLPage from "../domains/etl/ETLProcessor";
+import IAPage from "../domains/ia-scoring/components/IAScoring";
+import ChatPage from "../domains/chat/ChatPage";
 
-// Nuevo layout con tema oscuro
-import { MainLayout } from '../components/layout';
+// ✅ NUEVOS IMPORTS - Módulos implementados
+import { BitacoraViewer } from "../domains/bitacora";
+import { VersionesViewer } from "../domains/versiones";
+import { NotificacionesCenter } from "../domains/notificaciones";
+
+// Protected Route Component
+const ProtectedRoute = ({ children }) => {
+  const { user, isAuthenticated } = useAuthStore();
+
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
+
+// Public Route Component (redirects if authenticated)
+const PublicRoute = ({ children }) => {
+  const { isAuthenticated } = useAuthStore();
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
 
 const AppRouter = () => {
-  const { initializeAuth, isAuthenticated } = useAuthStore();
-
-  useEffect(() => {
-    initializeAuth();
-  }, []);
-
   return (
-    <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route 
-          path="/login" 
-          element={
-            isAuthenticated ? <Navigate to="/dashboard" replace /> : <AuthPage />
-          } 
-        />
+    <ThemeProvider>
+      <Router
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
+        <Routes>
+          {/* Public Routes */}
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <AuthPage />
+              </PublicRoute>
+            }
+          />
 
-        {/* Protected Routes con MainLayout */}
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <DashboardsPage />
-              </MainLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        <Route 
-          path="/dashboard-old" 
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <Dashboard />
-              </MainLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        <Route 
-          path="/profile" 
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <UserProfile />
-              </MainLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        <Route 
-          path="/etl" 
-          element={
-            <ProtectedRoute requiredRoles={['ADMIN', 'AUDITOR']}>
-              <MainLayout>
-                <ETLProcessor />
-              </MainLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        <Route 
-          path="/auditorias" 
-          element={
-            <ProtectedRoute requiredRoles={['ADMIN', 'AUDITOR', 'SUPERVISOR']}>
-              <MainLayout>
-                <AuditoriasPage />
-              </MainLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        <Route 
-          path="/ia" 
-          element={
-            <ProtectedRoute requiredRoles={['ADMIN', 'AUDITOR']}>
-              <MainLayout>
-                <IAScoring />
-              </MainLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        <Route 
-          path="/chat" 
-          element={
-            <ProtectedRoute requiredRoles={['ADMIN', 'AUDITOR', 'SUPERVISOR', 'PROVEEDOR']}>
-              <MainLayout>
-                <ChatPage />
-              </MainLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        <Route 
-          path="/reportes" 
-          element={
-            <ProtectedRoute requiredRoles={['ADMIN', 'AUDITOR', 'SUPERVISOR']}>
-              <MainLayout>
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Reportes Avanzados</h1>
-                  <p className="text-gray-600 dark:text-gray-300 mb-6">
-                    Generación de reportes ejecutivos y análisis comparativos
-                  </p>
-                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-green-800 dark:text-green-300 mb-2">En Planificación</h3>
-                    <p className="text-sm text-green-700 dark:text-green-400">
-                      📊 Dashboards ejecutivos, exportación PDF y métricas comparativas
-                    </p>
-                  </div>
-                </div>
-              </MainLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        <Route 
-          path="/admin" 
-          element={
-            <ProtectedRoute requiredRole="ADMIN" showUnauthorized={true}>
-              <MainLayout>
-                <AdminPage />
-              </MainLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        {/* Rutas adicionales para páginas individuales */}
-        <Route 
-          path="/perfil" 
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <UserProfile />
-              </MainLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        <Route 
-          path="/configuracion" 
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Configuración de Usuario</h1>
-                  <p className="text-gray-600 dark:text-gray-300 mb-6">
-                    Personaliza tu experiencia en el Portal de Auditorías
-                  </p>
-                  <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Próximamente</h3>
-                    <p className="text-sm text-gray-700 dark:text-gray-400">
-                      ⚙️ Configuración de preferencias, notificaciones y tema
-                    </p>
-                  </div>
-                </div>
-              </MainLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        <Route 
-          path="/notificaciones" 
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Centro de Notificaciones</h1>
-                  <p className="text-gray-600 dark:text-gray-300 mb-6">
-                    Historial completo de notificaciones y alertas del sistema
-                  </p>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">En Desarrollo</h3>
-                    <p className="text-sm text-blue-700 dark:text-blue-400">
-                      🔔 Centro de notificaciones con filtros y gestión de preferencias
-                    </p>
-                  </div>
-                </div>
-              </MainLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        {/* Ruta de testing ClickUp Sidebar */}
-        <Route 
-          path="/clickup-test" 
-          element={
-            <ProtectedRoute requiredRole="ADMIN">
-              <MainLayout>
-                <ClickUpTestPage />
-              </MainLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        {/* Default redirects */}
-        <Route 
-          path="/" 
-          element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} 
-        />
-        
-        {/* Catch all - redirect to dashboard if authenticated, login if not */}
-        <Route 
-          path="*" 
-          element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} 
-        />
-      </Routes>
-    </Router>
+          {/* Protected Routes with MainLayout */}
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Routes>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    
+                    {/* ✅ RUTAS DE AUDITORÍAS OPTIMIZADAS */}
+                    <Route path="/auditorias" element={<AuditoriasPage />} />
+                    <Route path="/auditorias/:auditoriaId" element={<AuditoriaDetallePage />} />
+                    <Route path="/auditorias/:auditoriaId/wizard" element={<AuditoriaWizard />} />
+                    <Route path="/auditorias/:auditoriaId/editar" element={<AuditoriaWizard />} />
+                    
+                    <Route path="/etl/*" element={<ETLPage />} />
+                    <Route path="/ia-scoring/*" element={<IAPage />} />
+                    <Route path="/chat/*" element={<ChatPage />} />
+                    
+                    {/* ✅ NUEVAS RUTAS - Módulos implementados */}
+                    <Route path="/bitacora" element={<BitacoraViewer />} />
+                    <Route path="/versiones" element={<VersionesViewer />} />
+                    <Route path="/notificaciones" element={<NotificacionesCenter />} />
+                    
+                    <Route
+                      path="/"
+                      element={<Navigate to="/dashboard" replace />}
+                    />
+                  </Routes>
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 };
 

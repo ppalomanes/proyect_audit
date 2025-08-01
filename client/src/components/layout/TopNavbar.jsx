@@ -553,7 +553,7 @@ const TopNavbar = ({ isCollapsed }) => {
       </div>
 
       {/* Estilos para scrollbar personalizado y utilidades */}
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
         }

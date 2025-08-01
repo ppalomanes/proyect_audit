@@ -1,242 +1,198 @@
-/**
- * Rutas ETL - Portal de Auditorías Técnicas
- * Endpoints para procesamiento de parque informático
- */
-
+// server/domains/etl/etl.routes.js
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
 
-// Controllers
-const etlController = require('./etl.controller');
+// ===== RUTAS ETL =====
 
-// Validators
-const { 
-  validateProcessFile,
-  validateJobId,
-  validateValidationRules,
-  validateMetricsQuery,
-  validateReportGeneration,
-  validateBatchProcess,
-  validateJobQuery
-} = require('./validators/etl.validators');
-
-// Configuración Multer para upload de archivos ETL
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../../../uploads/etl/'));
-  },
-  filename: (req, file, cb) => {
-    const timestamp = Date.now();
-    const ext = path.extname(file.originalname);
-    cb(null, `etl_${timestamp}_${file.originalname}`);
-  }
-});
-
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB máximo
-  },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-      'application/vnd.ms-excel', // .xls
-      'text/csv', // .csv
-      'application/csv'
-    ];
+// GET /api/etl/validation-rules - Obtener reglas de validación
+router.get('/validation-rules', (req, res) => {
+  try {
+    const { auditoria_id } = req.query;
     
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Tipo de archivo no soportado. Use Excel (.xlsx, .xls) o CSV (.csv)'));
-    }
-  }
-});
-
-// ============================================
-// ENDPOINTS PRINCIPALES DE PROCESAMIENTO ETL
-// ============================================
-
-/**
- * POST /api/etl/process
- * Procesar archivo Excel/CSV del parque informático
- */
-router.post('/process', 
-  upload.single('archivo'),
-  validateProcessFile,
-  etlController.procesarParqueInformatico
-);
-
-/**
- * POST /api/etl/validate-only
- * Validar archivo sin procesar (dry-run)
- */
-router.post('/validate-only',
-  upload.single('archivo'),
-  validateProcessFile,
-  etlController.validarSolamente
-);
-
-/**
- * POST /api/etl/batch-process
- * Procesar múltiples archivos en lote
- */
-router.post('/batch-process',
-  upload.array('archivos', 10),
-  validateBatchProcess,
-  etlController.procesarLote
-);
-
-// ============================================
-// ENDPOINTS DE GESTIÓN DE JOBS ETL
-// ============================================
-
-/**
- * GET /api/etl/jobs
- * Listar jobs ETL con filtros
- */
-router.get('/jobs',
-  validateJobQuery,
-  etlController.listarJobs
-);
-
-/**
- * GET /api/etl/jobs/:job_id/status
- * Obtener estado detallado de un job ETL
- */
-router.get('/jobs/:job_id/status',
-  validateJobId,
-  etlController.obtenerEstadoJob
-);
-
-/**
- * GET /api/etl/jobs/:job_id/results
- * Obtener resultados completos de un job ETL
- */
-router.get('/jobs/:job_id/results',
-  validateJobId,
-  etlController.obtenerResultadosJob
-);
-
-/**
- * POST /api/etl/jobs/:job_id/retry
- * Reintentar job ETL fallido
- */
-router.post('/jobs/:job_id/retry',
-  validateJobId,
-  etlController.reintentarJob
-);
-
-/**
- * DELETE /api/etl/jobs/:job_id
- * Cancelar job ETL en progreso
- */
-router.delete('/jobs/:job_id',
-  validateJobId,
-  etlController.cancelarJob
-);
-
-// ============================================
-// ENDPOINTS DE VALIDACIÓN Y REGLAS
-// ============================================
-
-/**
- * GET /api/etl/validation-rules
- * Obtener reglas de validación activas
- */
-router.get('/validation-rules',
-  etlController.obtenerReglasValidacion
-);
-
-/**
- * POST /api/etl/validation-rules
- * Configurar reglas de validación personalizadas
- */
-router.post('/validation-rules',
-  validateValidationRules,
-  etlController.configurarReglas
-);
-
-/**
- * GET /api/etl/schema
- * Obtener esquema normalizado de 28 campos
- */
-router.get('/schema',
-  etlController.obtenerEsquema
-);
-
-// ============================================
-// ENDPOINTS DE MÉTRICAS Y REPORTES
-// ============================================
-
-/**
- * GET /api/etl/metrics
- * Obtener métricas de procesamiento ETL
- */
-router.get('/metrics',
-  validateMetricsQuery,
-  etlController.obtenerMetricas
-);
-
-/**
- * GET /api/etl/quality-dashboard
- * Dashboard de calidad de datos en tiempo real
- */
-router.get('/quality-dashboard',
-  etlController.obtenerDashboardCalidad
-);
-
-/**
- * POST /api/etl/reports/quality
- * Generar reporte de calidad detallado
- */
-router.post('/reports/quality',
-  validateReportGeneration,
-  etlController.generarReporteCalidad
-);
-
-/**
- * GET /api/etl/health
- * Health check del módulo ETL
- */
-router.get('/health', etlController.healthCheck);
-
-/**
- * GET /api/etl/version
- * Obtener versión y información del módulo ETL
- */
-router.get('/version', etlController.obtenerVersion);
-
-// ============================================
-// MANEJO DE ERRORES ESPECÍFICOS DEL MÓDULO
-// ============================================
-
-// Middleware de manejo de errores de Multer
-router.use((error, req, res, next) => {
-  if (error instanceof multer.MulterError) {
-    if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({
-        success: false,
-        error: 'ETL_FILE_TOO_LARGE',
-        message: 'El archivo excede el tamaño máximo permitido (50MB)'
-      });
-    }
-  }
-  
-  if (error.message.includes('Tipo de archivo no soportado')) {
-    return res.status(400).json({
-      success: false,
-      error: 'ETL_UNSUPPORTED_FILE_TYPE',
-      message: error.message,
-      details: {
-        supported_types: ['.xlsx', '.xls', '.csv']
+    const reglasValidacion = {
+      reglas_esquema: [
+        {
+          campo: 'procesador_marca',
+          tipo: 'string',
+          valores_permitidos: ['Intel', 'AMD'],
+          requerido: true
+        },
+        {
+          campo: 'ram_gb',
+          tipo: 'integer',
+          valor_minimo: 4,
+          valor_maximo: 128,
+          requerido: true
+        },
+        {
+          campo: 'disco_tipo',
+          tipo: 'string',
+          valores_permitidos: ['HDD', 'SSD', 'NVME'],
+          requerido: true
+        }
+      ],
+      reglas_negocio: [
+        {
+          nombre: 'ram_minima_windows',
+          descripcion: 'Windows 10/11 requiere mínimo 16GB RAM',
+          campo: 'ram_gb',
+          condicion: 'mayor_igual_que',
+          valor: 16
+        },
+        {
+          nombre: 'procesador_minimo',
+          descripcion: 'Procesador mínimo Intel Core i5 o AMD Ryzen 5',
+          campo: 'procesador_modelo',
+          condicion: 'contiene',
+          valores: ['Core i5', 'Core i7', 'Ryzen 5', 'Ryzen 7']
+        }
+      ],
+      umbrales: {
+        ram_minima_gb: 16,
+        cpu_minima_ghz: 2.5,
+        disco_minimo_gb: 500,
+        os_soportados: ['Windows 10', 'Windows 11'],
+        navegadores_permitidos: ['Chrome', 'Firefox', 'Edge'],
+        velocidad_down_ho_mbps: 15,
+        velocidad_up_ho_mbps: 6
       }
+    };
+    
+    res.json({
+      success: true,
+      data: reglasValidacion
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error obteniendo reglas de validación',
+      error: error.message
     });
   }
-  
-  next(error);
+});
+
+// POST /api/etl/validate-only - Validar archivo sin procesar
+router.post('/validate-only', (req, res) => {
+  try {
+    // Simular validación de archivo
+    const resultadoValidacion = {
+      es_valido: true,
+      errores_criticos: [],
+      advertencias: [
+        {
+          fila: 5,
+          campo: 'ram_gb',
+          valor: '8',
+          mensaje: 'RAM inferior al mínimo recomendado (16GB)',
+          severidad: 'warning'
+        }
+      ],
+      sugerencias_mejora: [
+        'Considere actualizar equipos con RAM inferior a 16GB',
+        'Verifique que todos los sistemas operativos sean Windows 11'
+      ],
+      estadisticas: {
+        total_filas: 25,
+        filas_validas: 23,
+        filas_con_advertencias: 2,
+        filas_con_errores: 0
+      }
+    };
+    
+    res.json({
+      success: true,
+      data: resultadoValidacion
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error validando archivo',
+      error: error.message
+    });
+  }
+});
+
+// POST /api/etl/process - Procesar archivo ETL
+router.post('/process', (req, res) => {
+  try {
+    // Simular procesamiento ETL
+    const jobId = `etl_job_${Date.now()}`;
+    
+    res.json({
+      success: true,
+      data: {
+        job_id: jobId,
+        estado: 'INICIADO',
+        estimacion_tiempo: '3-5 minutos',
+        total_registros_detectados: 25
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error procesando archivo ETL',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/etl/jobs/:job_id/status - Estado de job ETL
+router.get('/jobs/:job_id/status', (req, res) => {
+  try {
+    const { job_id } = req.params;
+    
+    const statusJob = {
+      job_id: job_id,
+      estado: 'COMPLETADO',
+      progreso: {
+        porcentaje: 100,
+        etapa_actual: 'COMPLETADO',
+        registros_procesados: 25,
+        registros_total: 25,
+        tiempo_transcurrido: '2m 15s',
+        tiempo_estimado_restante: '0s'
+      },
+      estadisticas: {
+        registros_validos: 23,
+        registros_con_advertencias: 2,
+        registros_con_errores: 0,
+        campos_normalizados: 700,
+        reglas_aplicadas: 12
+      }
+    };
+    
+    res.json({
+      success: true,
+      data: statusJob
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error obteniendo estado del job',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/etl/status - Estado general del ETL
+router.get('/status', (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: {
+        estado: 'OPERATIVO',
+        version: '1.0.0',
+        jobs_activos: 0,
+        jobs_completados_hoy: 5
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error obteniendo estado ETL',
+      error: error.message
+    });
+  }
 });
 
 module.exports = router;

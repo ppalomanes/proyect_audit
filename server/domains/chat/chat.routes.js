@@ -289,4 +289,10 @@ router.use((error, req, res, next) => {
   });
 });
 
-module.exports = router;
+module.exports = router;const router = express.Router(); 
+ 
+router.get('/health', (req, res) > { 
+  res.json({ status: 'Chat service running' }); 
+}); 
+ 
+module.exports = router; 

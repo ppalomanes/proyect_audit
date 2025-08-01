@@ -1,397 +1,417 @@
-/**
- * Sidebar ClickUp Style - Portal de Auditorías Técnicas
- * 
- * Replica exacta del diseño de ClickUp observado en las imágenes:
- * - Colores: Fondo azul oscuro #1a1f36, texto blanco, elementos activos azul claro
- * - Estructura: Workspace branding, navegación jerárquica, secciones expandibles
- * - Comportamiento: Expansión/colapso suave, estados hover/active precisos
- * - Tipografía: Plus Jakarta Sans, jerarquía clara, badges y contadores
- */
+// client/src/components/layout/Sidebar.jsx
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import useAuthStore from "../../domains/auth/authStore";
+import { useNotificacionesStore } from "../../domains/notificaciones/NotificacionesStore";
+import {
+  HomeIcon,
+  DocumentCheckIcon,
+  CogIcon,
+  BeakerIcon,
+  ChatBubbleLeftRightIcon,
+  ChartBarIcon,
+  Cog6ToothIcon,
+  PowerIcon,
+  XMarkIcon,
+  CheckCircleIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ClipboardDocumentListIcon,
+  ArchiveBoxIcon,
+  BellIcon,
+} from "@heroicons/react/24/outline";
 
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Icons } from './Icons';
-
-// Store de autenticación
-import { useAuthStore } from '../../domains/auth/authStore';
-import { getUserInitials, getUserFullName, translateUserRole } from '../../utils/userUtils';
-
-// Configuración de navegación principal - Estructura ClickUp
-const getMainNavigation = (userRole, currentPath) => {
-  const mainNav = [
-    { 
-      id: 'dashboard',
-      name: 'Inicio', 
-      href: '/dashboard', 
-      icon: Icons.Dashboard, 
-      current: currentPath === '/dashboard' 
-    },
-    { 
-      id: 'auditorias',
-      name: 'Auditorías', 
-      href: '/auditorias', 
-      icon: Icons.Auditorias, 
-      current: currentPath === '/auditorias',
-      badge: '2' // Ejemplo de badge activo
-    },
-    { 
-      id: 'etl',
-      name: 'ETL', 
-      href: '/etl', 
-      icon: Icons.ETL, 
-      current: currentPath === '/etl' 
-    },
-    { 
-      id: 'ia',
-      name: 'IA Scoring', 
-      href: '/ia', 
-      icon: Icons.IA, 
-      current: currentPath === '/ia' 
-    },
-    { 
-      id: 'chat',
-      name: 'Chat', 
-      href: '/chat', 
-      icon: Icons.Chat, 
-      current: currentPath.startsWith('/chat'),
-      isActive: currentPath.startsWith('/chat') // Chat siempre destacado como en ClickUp
-    },
-    { 
-      id: 'reportes',
-      name: 'Reportes', 
-      href: '/reportes', 
-      icon: Icons.Reportes, 
-      current: currentPath === '/reportes' 
-    }
-  ];
-
-  // Administración solo para ADMIN
-  if (userRole === 'ADMIN') {
-    mainNav.push({
-      id: 'admin',
-      name: 'Administración',
-      href: '/admin',
-      icon: Icons.Admin,
-      current: currentPath === '/admin'
-    });
-  }
-
-  return mainNav;
-};
-
-// Configuración de secciones expandibles - Estilo ClickUp
-const getWorkspaceSections = (currentPath) => {
-  return [
-    {
-      id: 'favoritos',
-      name: 'Favoritos',
-      icon: Icons.Star,
-      items: [
-        { id: 'fav-1', name: 'Dashboard Principal', href: '/dashboard', icon: Icons.Dashboard },
-        { id: 'fav-2', name: 'Auditorías Activas', href: '/auditorias?filter=active', icon: Icons.Auditorias }
-      ]
-    },
-    {
-      id: 'espacios',
-      name: 'Espacios',
-      icon: Icons.Folder,
-      items: [
-        { 
-          id: 'space-all', 
-          name: 'Todo', 
-          href: '/espacios/todo', 
-          icon: Icons.Globe,
-          current: currentPath === '/espacios/todo'
-        },
-        { 
-          id: 'space-team', 
-          name: 'Espacio del equipo [ES]', 
-          href: '/espacios/equipo', 
-          icon: Icons.Users,
-          current: currentPath === '/espacios/equipo',
-          color: '#7B68EE' // Color corporativo
-        }
-      ],
-      actions: [
-        { id: 'create-space', name: 'Crear espacio', icon: Icons.Plus }
-      ]
-    }
-  ];
-};
-
-const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile }) => {
-  const navigate = useNavigate();
+const Sidebar = ({ isOpen, onClose, isMobile, isCollapsed, onCollapse }) => {
   const location = useLocation();
-  const { user, logout, isAuthenticated } = useAuthStore();
-  
-  // Estados locales para manejo de expansión
-  const [expandedSections, setExpandedSections] = useState(new Set(['espacios']));
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const navigate = useNavigate();
+  const { logout } = useAuthStore();
+  const { noLeidas } = useNotificacionesStore();
+  const [expandedMenus, setExpandedMenus] = useState({});
+  // isCollapsed y onCollapse ahora vienen como props desde MainLayout
 
-  // Verificación de seguridad
-  if (!isAuthenticated || !user) {
-    return <SidebarSkeleton isCollapsed={isCollapsed} />;
-  }
+  const menuItems = [
+    {
+      id: "dashboard",
+      name: "Dashboard",
+      path: "/dashboard",
+      icon: HomeIcon,
+      badge: null,
+    },
+    {
+      id: "auditorias",
+      name: "Auditorías",
+      path: "/auditorias",
+      icon: DocumentCheckIcon,
+      badge: { count: 3, type: "success" },
+      subItems: [
+        { name: "Todas las Auditorías", path: "/auditorias" },
+        { name: "Nueva Auditoría", path: "/auditorias", action: "nueva" },
+        { name: "En Progreso", path: "/auditorias?estado=CARGA_PRESENCIAL,CARGA_PARQUE" },
+        { name: "Completadas", path: "/auditorias?estado=COMPLETADA" },
+        { name: "Reportes", path: "/reportes/auditorias" },
+      ],
+    },
+    {
+      id: "etl",
+      name: "ETL Parque",
+      path: "/etl",
+      icon: CogIcon,
+      badge: { count: 2, type: "success" },
+      subItems: [
+        { name: "Cargar Datos", path: "/etl/upload" },
+        { name: "Procesos", path: "/etl/procesos" },
+        { name: "Validaciones", path: "/etl/validaciones" },
+      ],
+    },
+    {
+      id: "ia-scoring",
+      name: "IA Scoring",
+      path: "/ia-scoring",
+      icon: BeakerIcon,
+      badge: null,
+      subItems: [
+        { name: "Análisis Documentos", path: "/ia-scoring/documentos" },
+        { name: "Análisis Imágenes", path: "/ia-scoring/imagenes" },
+        { name: "Resultados", path: "/ia-scoring/resultados" },
+      ],
+    },
+    {
+      id: "chat",
+      name: "Mensajería",
+      path: "/chat",
+      icon: ChatBubbleLeftRightIcon,
+      badge: { count: 5, type: "success" },
+    },
+    {
+      id: "bitacora",
+      name: "Bitácora",
+      path: "/bitacora",
+      icon: ClipboardDocumentListIcon,
+      badge: null,
+    },
+    {
+      id: "versiones",
+      name: "Versiones",
+      path: "/versiones",
+      icon: ArchiveBoxIcon,
+      badge: null,
+    },
+    {
+      id: "notificaciones",
+      name: "Notificaciones",
+      path: "/notificaciones",
+      icon: BellIcon,
+      badge: noLeidas > 0 ? { count: noLeidas, type: "success" } : null,
+    },
+    {
+      id: "reportes",
+      name: "Reportes",
+      path: "/reportes",
+      icon: ChartBarIcon,
+      badge: null,
+    },
+  ];
 
-  const mainNavigation = getMainNavigation(user.rol, location.pathname);
-  const workspaceSections = getWorkspaceSections(location.pathname);
-
-  // Clases dinámicas para el sidebar
-  const sidebarClasses = `
-    clickup-sidebar fixed inset-y-0 left-0 z-50 flex flex-col
-    ${isCollapsed ? 'clickup-sidebar-collapsed' : 'clickup-sidebar-expanded'}
-    transition-all duration-300 ease-out
-    ${isMobile && !isCollapsed ? 'shadow-2xl' : ''}
-  `;
-
-  const toggleSection = (sectionId) => {
-    const newExpanded = new Set(expandedSections);
-    if (newExpanded.has(sectionId)) {
-      newExpanded.delete(sectionId);
-    } else {
-      newExpanded.add(sectionId);
-    }
-    setExpandedSections(newExpanded);
+  const isActiveItem = (path) => {
+    return (
+      location.pathname === path || location.pathname.startsWith(path + "/")
+    );
   };
 
-  const handleNavigation = (href) => {
-    navigate(href);
+  const isActiveSubItem = (path) => {
+    return location.pathname === path;
+  };
+
+  const toggleSubmenu = (itemId) => {
+    if (isCollapsed) return; // No expandir en modo colapsado
+    setExpandedMenus((prev) => ({
+      ...prev,
+      [itemId]: !prev[itemId],
+    }));
+  };
+
+  const handleNavigation = (path, item = null) => {
+    // Manejo especial para Nueva Auditoria
+    if (item && item.action === 'nueva') {
+      // Navegar a la página de auditorías y el componente se encargará del modal
+      navigate('/auditorias?action=nueva');
+      if (isMobile) {
+        onClose();
+      }
+      return;
+    }
+    
+    navigate(path);
     if (isMobile) {
-      setIsCollapsed(true);
+      onClose();
     }
   };
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
-  return (
-    <div className={sidebarClasses}>
-      {/* Header del workspace - Estilo ClickUp */}
-      <div className="clickup-sidebar-header">
-        {!isCollapsed && (
-          <div className="clickup-workspace-brand">
-            <div className="clickup-workspace-avatar">
-              <span className="clickup-workspace-initial">B</span>
-            </div>
-            <div className="clickup-workspace-info">
-              <span className="clickup-workspace-name">BITÁCORA</span>
-              <span className="clickup-workspace-type">Espacio de trabajo</span>
-            </div>
-          </div>
-        )}
-        
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="clickup-collapse-btn"
-          aria-label={isCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
-        >
-          {isCollapsed ? <Icons.ChevronRight className="w-4 h-4" /> : <Icons.ChevronLeft className="w-4 h-4" />}
-        </button>
-      </div>
+  const toggleCollapse = () => {
+    onCollapse(!isCollapsed);
+    // Cerrar todos los submenús cuando colapsamos
+    if (!isCollapsed) {
+      setExpandedMenus({});
+    }
+  };
 
-      {/* Navegación principal - Lista estilo ClickUp */}
-      <nav className="clickup-main-nav">
-        {mainNavigation.map((item) => (
-          <NavigationItem 
-            key={item.id}
-            item={item}
-            isCollapsed={isCollapsed}
-            onClick={() => handleNavigation(item.href)}
-          />
-        ))}
-      </nav>
+  const renderBadge = (badge, isCollapsedMode = false) => {
+    if (!badge) return null;
 
-      {/* Secciones de workspace expandibles */}
-      {!isCollapsed && (
-        <div className="clickup-workspace-sections">
-          {workspaceSections.map((section) => (
-            <WorkspaceSection
-              key={section.id}
-              section={section}
-              isExpanded={expandedSections.has(section.id)}
-              onToggle={() => toggleSection(section.id)}
-              onNavigate={handleNavigation}
-            />
-          ))}
-        </div>
-      )}
+    // Unificar todos los badges al color verde (success)
+    const badgeClass =
+      "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400";
 
-      {/* Área de usuario inferior */}
-      <div className="clickup-user-area">
-        <UserProfile 
-          user={user}
-          isCollapsed={isCollapsed}
-          showDropdown={showUserDropdown}
-          setShowDropdown={setShowUserDropdown}
-          onNavigate={handleNavigation}
-          onLogout={handleLogout}
-        />
-      </div>
-    </div>
-  );
-};
+    // Tamaño diferente para modo colapsado
+    const sizeClass = isCollapsedMode
+      ? "px-1.5 py-0.5 text-xs min-w-[1rem] h-4"
+      : "px-2 py-0.5 text-xs min-w-[1.25rem] h-5";
 
-// Componente NavigationItem - Elemento de navegación principal
-const NavigationItem = ({ item, isCollapsed, onClick }) => {
-  const isActive = item.current || item.isActive;
-  
-  return (
-    <button
-      onClick={onClick}
-      className={`clickup-nav-item ${isActive ? 'clickup-nav-item-active' : ''}`}
-      title={isCollapsed ? item.name : undefined}
-    >
-      <item.icon className="clickup-nav-icon" />
-      {!isCollapsed && (
-        <>
-          <span className="clickup-nav-label">{item.name}</span>
-          {item.badge && (
-            <span className="clickup-nav-badge">{item.badge}</span>
-          )}
-        </>
-      )}
-    </button>
-  );
-};
-
-// Componente WorkspaceSection - Sección expandible
-const WorkspaceSection = ({ section, isExpanded, onToggle, onNavigate }) => {
-  return (
-    <div className="clickup-workspace-section">
-      <button
-        onClick={onToggle}
-        className="clickup-section-header"
-      >
-        <section.icon className="clickup-section-icon" />
-        <span className="clickup-section-title">{section.name}</span>
-        <Icons.ChevronRight 
-          className={`clickup-section-chevron ${isExpanded ? 'clickup-section-chevron-expanded' : ''}`} 
-        />
-      </button>
-      
-      {isExpanded && (
-        <div className="clickup-section-content">
-          {section.items?.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.href)}
-              className={`clickup-section-item ${item.current ? 'clickup-section-item-active' : ''}`}
-              style={item.color ? { '--item-color': item.color } : {}}
-            >
-              <item.icon className="clickup-section-item-icon" />
-              <span className="clickup-section-item-name">{item.name}</span>
-            </button>
-          ))}
-          
-          {section.actions?.map((action) => (
-            <button
-              key={action.id}
-              className="clickup-section-action"
-            >
-              <action.icon className="clickup-section-action-icon" />
-              <span className="clickup-section-action-name">{action.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Componente UserProfile - Área de usuario
-const UserProfile = ({ user, isCollapsed, showDropdown, setShowDropdown, onNavigate, onLogout }) => {
-  if (isCollapsed) {
     return (
-      <button
-        className="clickup-user-profile-collapsed"
-        title={getUserFullName(user)}
+      <span
+        className={`inline-flex items-center justify-center font-medium rounded-full ${sizeClass} ${badgeClass}`}
       >
-        <div className="clickup-user-avatar-small">
-          <span>{getUserInitials(user)}</span>
-        </div>
-      </button>
+        {badge.count}
+      </span>
     );
-  }
+  };
+
+  const sidebarWidth = isCollapsed ? "w-16" : "w-64";
 
   return (
-    <div className="clickup-user-profile">
-      <button
-        onClick={() => setShowDropdown(!showDropdown)}
-        className="clickup-user-profile-btn"
+    <>
+      {/* Sidebar Container */}
+      <div
+        className={`fixed inset-y-0 left-0 z-30 ${sidebarWidth} transform transition-all duration-300 ease-in-out ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        } bg-[#1a1f36] shadow-lg`}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          height: "100vh",
+        }}
       >
-        <div className="clickup-user-avatar">
-          <span>{getUserInitials(user)}</span>
-        </div>
-        <div className="clickup-user-info">
-          <span className="clickup-user-name">{getUserFullName(user)}</span>
-          <span className="clickup-user-role">{translateUserRole(user.rol)}</span>
-        </div>
-        <Icons.ChevronDown className="clickup-user-chevron" />
-      </button>
-
-      {showDropdown && (
-        <div className="clickup-user-dropdown">
-          <div className="clickup-user-dropdown-header">
-            <span className="clickup-user-dropdown-name">{getUserFullName(user)}</span>
-            <span className="clickup-user-dropdown-email">{user.email}</span>
-          </div>
-          
-          <button 
-            onClick={() => onNavigate('/perfil')}
-            className="clickup-user-dropdown-item"
-          >
-            <Icons.User className="w-4 h-4" />
-            Mi Perfil
-          </button>
-          
-          <button 
-            onClick={() => onNavigate('/configuracion')}
-            className="clickup-user-dropdown-item"
-          >
-            <Icons.Settings className="w-4 h-4" />
-            Configuración
-          </button>
-          
-          <div className="clickup-user-dropdown-divider" />
-          
-          <button
-            onClick={onLogout}
-            className="clickup-user-dropdown-item clickup-user-dropdown-logout"
-          >
-            <Icons.Logout className="w-4 h-4" />
-            Cerrar Sesión
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Componente SidebarSkeleton - Loading state
-const SidebarSkeleton = ({ isCollapsed }) => {
-  return (
-    <div className={`clickup-sidebar ${isCollapsed ? 'clickup-sidebar-collapsed' : 'clickup-sidebar-expanded'}`}>
-      <div className="clickup-sidebar-header">
-        {!isCollapsed && (
-          <div className="animate-pulse flex items-center space-x-3">
-            <div className="clickup-workspace-avatar bg-gray-600"></div>
-            <div className="space-y-2">
-              <div className="h-4 bg-gray-600 rounded w-20"></div>
-              <div className="h-3 bg-gray-600 rounded w-16"></div>
+        {/* Sidebar Header */}
+        <div
+          className="flex items-center justify-between h-16 px-4 border-b border-gray-700 relative"
+          style={{ flexShrink: 0 }}
+        >
+          {!isCollapsed && (
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600">
+                <CheckCircleIcon className="w-5 h-5 text-white" />
+              </div>
+              <div className="text-white">
+                <h1 className="text-sm font-semibold">Portal Auditorías</h1>
+                <p className="text-xs text-gray-300">Técnicas</p>
+              </div>
             </div>
+          )}
+
+          {isCollapsed && (
+            <div className="flex items-center justify-center w-full relative">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600">
+                <CheckCircleIcon className="w-5 h-5 text-white" />
+              </div>
+              
+              {/* Collapse Toggle Button para modo colapsado - DENTRO del header colapsado */}
+              {!isMobile && (
+                <div className="absolute top-1/2 right-2 transform -translate-y-1/2">
+                  <button
+                    onClick={toggleCollapse}
+                    className="flex items-center justify-center w-6 h-6 rounded hover:bg-gray-700/50 transition-all duration-200 focus:outline-none"
+                    title="Expandir sidebar"
+                  >
+                    <div className="flex flex-col space-y-0.5">
+                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Collapse Toggle Button - DENTRO del header solo cuando está expandido */}
+          {!isMobile && !isCollapsed && (
+            <div className="absolute top-1/2 right-4 transform -translate-y-1/2">
+              <button
+                onClick={toggleCollapse}
+                className="flex items-center justify-center w-6 h-6 rounded hover:bg-gray-700/50 transition-all duration-200 focus:outline-none"
+                title="Colapsar sidebar"
+              >
+                <div className="flex flex-col space-y-0.5">
+                  <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                  <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                  <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {isMobile && (
+            <button
+              onClick={onClose}
+              className="p-1 text-gray-300 transition-colors rounded-md hover:text-white hover:bg-gray-700"
+            >
+              <XMarkIcon className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
+        {/* Navigation Menu */}
+        <div
+          className="px-2 py-4 space-y-1 overflow-y-auto scrollbar-thin scrollbar-track-gray-700 scrollbar-thumb-gray-500"
+          style={{
+            flex: 1,
+            paddingBottom: "120px", // Espacio optimizado para el footer
+            marginBottom: "0",
+          }}
+        >
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = isActiveItem(item.path);
+            const hasSubItems = item.subItems && item.subItems.length > 0;
+            const isExpanded = expandedMenus[item.id] && !isCollapsed;
+
+            return (
+              <div key={item.id}>
+                {/* Main Menu Item */}
+                <div
+                  className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-md cursor-pointer transition-all duration-200 relative ${
+                    isActive
+                      ? "bg-blue-500/20 text-white border-l-4 border-blue-400"
+                      : "text-gray-300 hover:bg-gray-700/50 hover:text-white"
+                  } ${isCollapsed ? "justify-center px-2" : ""}`}
+                  onClick={() => {
+                    if (hasSubItems && !isCollapsed) {
+                      toggleSubmenu(item.id);
+                    } else {
+                      handleNavigation(item.path);
+                    }
+                  }}
+                  title={isCollapsed ? item.name : ""}
+                >
+                  <Icon
+                    className={`flex-shrink-0 w-5 h-5 ${
+                      isCollapsed ? "" : "mr-3"
+                    } ${isActive ? "text-blue-300" : ""}`}
+                  />
+
+                  {!isCollapsed && (
+                    <>
+                      <span className="flex-1 min-w-0 truncate">
+                        {item.name}
+                      </span>
+
+                      <div className="flex items-center ml-auto space-x-2">
+                        {renderBadge(item.badge, false)}
+                        {hasSubItems && (
+                          <svg
+                            className={`h-4 w-4 transform transition-transform duration-200 ${
+                              isExpanded ? "rotate-90" : ""
+                            }`}
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {isCollapsed && item.badge && (
+                    <div className="absolute z-10 -top-1 -right-1">
+                      {renderBadge(item.badge, true)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Submenu Items */}
+                {hasSubItems && isExpanded && !isCollapsed && (
+                  <div className="mt-1 ml-4 space-y-1">
+                    {item.subItems.map((subItem) => {
+                      const isSubActive = isActiveSubItem(subItem.path);
+                      return (
+                        <div
+                          key={subItem.path}
+                          className={`group flex items-center pl-7 pr-3 py-2.5 text-sm font-medium rounded-md cursor-pointer transition-all duration-200 relative ${
+                            isSubActive
+                              ? "bg-blue-500/20 text-white border-l-4 border-blue-400"
+                              : "text-gray-300 hover:bg-gray-700/50 hover:text-white"
+                          }`}
+                          onClick={() => handleNavigation(subItem.path, subItem)}
+                        >
+                          <div className={`w-1.5 h-1.5 rounded-full mr-3 opacity-70 ${
+                            isSubActive ? "bg-blue-300" : "bg-current"
+                          }`} />
+                          <span className="flex-1 min-w-0 truncate">
+                            {subItem.name}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Sidebar Footer - REALMENTE Fixed at bottom */}
+        <div
+          className="border-t border-gray-700/60 bg-[#1a1f36] backdrop-blur-sm"
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 20,
+            minHeight: "110px",
+          }}
+        >
+          {/* Divider visual mejorado */}
+          <div className="h-px mt-1 mb-3 bg-gradient-to-r from-transparent via-gray-500/60 to-transparent"></div>
+
+          <div className={`px-3 pb-3 space-y-1.5 ${isCollapsed ? "space-y-2" : ""}`}>
+            <button
+              onClick={() => handleNavigation("/configuracion")}
+              className={`flex items-center w-full text-sm font-medium text-gray-300 transition-all duration-200 rounded-md group hover:bg-gray-700/60 hover:text-white ${
+                isCollapsed ? "justify-center p-2.5" : "px-3 py-2"
+              } ${location.pathname === '/configuracion' ? 'bg-blue-500/20 text-white border-l-2 border-blue-400' : ''}`}
+              title={isCollapsed ? "Configuración" : ""}
+            >
+              <Cog6ToothIcon
+                className={`w-4 h-4 ${isCollapsed ? "" : "mr-3"} transition-transform group-hover:rotate-45`}
+              />
+              {!isCollapsed && "Configuración"}
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className={`flex items-center w-full text-sm font-medium text-gray-300 transition-all duration-200 rounded-md group hover:bg-red-600/80 hover:text-white transform hover:scale-105 ${
+                isCollapsed ? "justify-center p-2.5" : "px-3 py-2"
+              }`}
+              title={isCollapsed ? "Cerrar Sesión" : ""}
+            >
+              <PowerIcon className={`w-4 h-4 ${isCollapsed ? "" : "mr-3"} transition-transform group-hover:rotate-12`} />
+              {!isCollapsed && "Cerrar Sesión"}
+            </button>
           </div>
-        )}
-        <div className="w-6 h-6 bg-gray-600 rounded animate-pulse"></div>
+        </div>
       </div>
-      
-      <div className="clickup-main-nav">
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="h-10 bg-gray-600 rounded-lg animate-pulse mx-3 mb-2"></div>
-        ))}
-      </div>
-    </div>
+    </>
   );
 };
 

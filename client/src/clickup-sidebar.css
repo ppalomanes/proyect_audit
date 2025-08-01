@@ -1,4 +1,4 @@
-/* Font específica ClickUp */
+/* Font específica ClickUp - UPDATED v2.0 */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 /* ============================================= */
@@ -33,7 +33,7 @@
   font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
   color: var(--clickup-sidebar-text);
   border-right: 1px solid var(--clickup-sidebar-border);
-  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+  /* Eliminar sombra para seguir estilo ClickUp limpio */
 }
 
 .clickup-sidebar-expanded {
@@ -69,7 +69,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  /* Eliminar sombra para estilo ClickUp más limpio */
 }
 
 .clickup-workspace-initial {
@@ -86,7 +86,7 @@
 }
 
 .clickup-workspace-name {
-  font-size: 16px;
+  font-size: 15px; /* Reducido de 16px */
   font-weight: 700;
   color: var(--clickup-sidebar-text);
   line-height: 1.2;
@@ -116,7 +116,7 @@
 }
 
 .clickup-collapse-btn:hover {
-  background-color: var(--clickup-sidebar-bg-hover);
+  background-color: rgba(36, 41, 73, 0.6); /* Hover sutil */
   color: var(--clickup-sidebar-text);
   transform: scale(1.05);
 }
@@ -148,12 +148,12 @@
 }
 
 .clickup-nav-item:hover {
-  background-color: var(--clickup-sidebar-bg-hover);
+  background-color: rgba(36, 41, 73, 0.6); /* Hover sutil y diferenciado */
   color: var(--clickup-sidebar-text);
 }
 
 .clickup-nav-item-active {
-  background-color: var(--clickup-sidebar-active-bg);
+  background-color: rgba(74, 144, 226, 0.15); /* Activo bien diferenciado */
   color: var(--clickup-sidebar-active);
   font-weight: 600;
 }
@@ -179,7 +179,7 @@
 
 .clickup-nav-label {
   flex: 1;
-  font-size: 14px;
+  font-size: 13px; /* Reducido de 14px */
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -247,7 +247,7 @@
 }
 
 .clickup-section-header:hover {
-  background-color: var(--clickup-sidebar-bg-hover);
+  background-color: rgba(36, 41, 73, 0.6); /* Hover sutil */
   color: var(--clickup-sidebar-text);
 }
 
@@ -260,7 +260,7 @@
 
 .clickup-section-title {
   flex: 1;
-  font-size: 13px;
+  font-size: 12px; /* Reducido de 13px */
   font-weight: 600;
 }
 
@@ -301,11 +301,11 @@
 }
 
 .clickup-section-item:hover {
-  background-color: var(--clickup-sidebar-bg-hover);
+  background-color: rgba(36, 41, 73, 0.6); /* Hover sutil */
 }
 
 .clickup-section-item-active {
-  background-color: var(--clickup-sidebar-active-bg);
+  background-color: rgba(74, 144, 226, 0.15); /* Activo diferenciado */
   color: var(--clickup-sidebar-active);
   font-weight: 600;
 }
@@ -331,7 +331,7 @@
 
 .clickup-section-item-name {
   flex: 1;
-  font-size: 14px;
+  font-size: 13px; /* Reducido de 14px */
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -358,7 +358,7 @@
 }
 
 .clickup-section-action:hover {
-  background-color: var(--clickup-sidebar-bg-hover);
+  background-color: rgba(36, 41, 73, 0.6); /* Hover sutil */
   color: var(--clickup-sidebar-text);
 }
 
@@ -401,7 +401,7 @@
 }
 
 .clickup-user-profile-btn:hover {
-  background-color: var(--clickup-sidebar-bg-hover);
+  background-color: rgba(36, 41, 73, 0.6); /* Hover sutil */
 }
 
 .clickup-user-profile-collapsed {
@@ -418,7 +418,7 @@
 }
 
 .clickup-user-profile-collapsed:hover {
-  background-color: var(--clickup-sidebar-bg-hover);
+  background-color: rgba(36, 41, 73, 0.6); /* Hover sutil */
 }
 
 .clickup-user-avatar {
@@ -431,7 +431,7 @@
   justify-content: center;
   margin-right: 12px;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  /* Eliminar sombra para consistencia ClickUp */
 }
 
 .clickup-user-avatar-small {
@@ -442,7 +442,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  /* Eliminar sombra para consistencia ClickUp */
 }
 
 .clickup-user-avatar span,
@@ -460,7 +460,7 @@
 
 .clickup-user-name {
   display: block;
-  font-size: 14px;
+  font-size: 13px; /* Reducido de 14px */
   font-weight: 600;
   color: var(--clickup-sidebar-text);
   line-height: 1.3;
@@ -500,7 +500,7 @@
   background-color: var(--clickup-sidebar-bg);
   border: 1px solid var(--clickup-sidebar-border);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(20px);
   overflow: hidden;
   z-index: 50;
@@ -547,7 +547,7 @@
 }
 
 .clickup-user-dropdown-item:hover {
-  background-color: var(--clickup-sidebar-bg-hover);
+  background-color: rgba(36, 41, 73, 0.6); /* Hover sutil */
 }
 
 .clickup-user-dropdown-item svg {

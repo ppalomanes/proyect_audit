@@ -1,63 +1,77 @@
-const Conversacion = require('./Conversacion.model');
+// /server/domains/chat/models/index.js
+const Workspace = require('./Workspace.model');
+const Canal = require('./Canal.model');
 const Mensaje = require('./Mensaje.model');
-const ParticipanteChat = require('./ParticipanteChat.model');
+const ParticipanteWorkspace = require('./ParticipanteWorkspace.model');
+const LecturasMensaje = require('./LecturasMensaje.model');
+const ArchivosMensaje = require('./ArchivosMensaje.model');
 
-// Definir relaciones entre modelos
-const setupChatAssociations = () => {
-  
-  // Conversación → Mensajes (1:N)
-  Conversacion.hasMany(Mensaje, {
-    foreignKey: 'conversacion_id',
-    as: 'mensajes',
-    onDelete: 'CASCADE'
-  });
-  
-  Mensaje.belongsTo(Conversacion, {
-    foreignKey: 'conversacion_id',
-    as: 'conversacion'
-  });
+// Relaciones entre modelos
+// Workspace -> Canales
+Workspace.hasMany(Canal, {
+  foreignKey: 'workspace_id',
+  as: 'canales'
+});
+Canal.belongsTo(Workspace, {
+  foreignKey: 'workspace_id',
+  as: 'workspace'
+});
 
-  // Conversación → Participantes (1:N)
-  Conversacion.hasMany(ParticipanteChat, {
-    foreignKey: 'conversacion_id',
-    as: 'participantes',
-    onDelete: 'CASCADE'
-  });
-  
-  ParticipanteChat.belongsTo(Conversacion, {
-    foreignKey: 'conversacion_id',
-    as: 'conversacion'
-  });
+// Canal -> Mensajes
+Canal.hasMany(Mensaje, {
+  foreignKey: 'canal_id',
+  as: 'mensajes'
+});
+Mensaje.belongsTo(Canal, {
+  foreignKey: 'canal_id',
+  as: 'canal'
+});
 
-  // Mensaje → Respuestas (Self-reference)
-  Mensaje.hasMany(Mensaje, {
-    foreignKey: 'respuesta_a',
-    as: 'respuestas'
-  });
-  
-  Mensaje.belongsTo(Mensaje, {
-    foreignKey: 'respuesta_a',
-    as: 'mensaje_padre'
-  });
+// Mensaje -> Thread (auto-referencia)
+Mensaje.hasMany(Mensaje, {
+  foreignKey: 'parent_mensaje_id',
+  as: 'replies'
+});
+Mensaje.belongsTo(Mensaje, {
+  foreignKey: 'parent_mensaje_id',
+  as: 'parent'
+});
 
-  // Conversación → Último Mensaje (1:1)
-  Conversacion.belongsTo(Mensaje, {
-    foreignKey: 'ultimo_mensaje_id',
-    as: 'ultimo_mensaje'
-  });
+// Workspace -> Participantes
+Workspace.hasMany(ParticipanteWorkspace, {
+  foreignKey: 'workspace_id',
+  as: 'participantes'
+});
+ParticipanteWorkspace.belongsTo(Workspace, {
+  foreignKey: 'workspace_id',
+  as: 'workspace'
+});
 
-  // ParticipanteChat → Último Mensaje Leído (1:1)
-  ParticipanteChat.belongsTo(Mensaje, {
-    foreignKey: 'ultimo_mensaje_leido_id',
-    as: 'ultimo_mensaje_leido'
-  });
+// Mensaje -> Lecturas
+Mensaje.hasMany(LecturasMensaje, {
+  foreignKey: 'mensaje_id',
+  as: 'lecturas'
+});
+LecturasMensaje.belongsTo(Mensaje, {
+  foreignKey: 'mensaje_id',
+  as: 'mensaje'
+});
 
-  console.log('✅ Asociaciones del Chat configuradas');
-};
+// Mensaje -> Archivos
+Mensaje.hasMany(ArchivosMensaje, {
+  foreignKey: 'mensaje_id',
+  as: 'archivos_adjuntos'
+});
+ArchivosMensaje.belongsTo(Mensaje, {
+  foreignKey: 'mensaje_id',
+  as: 'mensaje'
+});
 
 module.exports = {
-  Conversacion,
+  Workspace,
+  Canal,
   Mensaje,
-  ParticipanteChat,
-  setupChatAssociations
+  ParticipanteWorkspace,
+  LecturasMensaje,
+  ArchivosMensaje
 };

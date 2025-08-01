@@ -1,751 +1,435 @@
 import React, { useState, useEffect } from 'react';
-import { useETLStore } from './etlStore';
+import useETLStore from './etlStore';
 import { ETLUploader, ETLProgress, ExcelValidator } from './components';
+import {
+  DocumentArrowUpIcon,
+  CogIcon,
+  ChartBarIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  InformationCircleIcon,
+  ArrowDownTrayIcon,
+  DocumentTextIcon,
+  CpuChipIcon,
+  PlayIcon,
+  ArrowPathIcon,
+  SparklesIcon,
+  CloudArrowUpIcon,
+  BoltIcon,
+  CircleStackIcon,
+} from '@heroicons/react/24/outline';
 
 const ETLProcessor = () => {
-  const [currentStep, setCurrentStep] = useState('upload'); // 'upload', 'processing', 'results'
+  const [currentStep, setCurrentStep] = useState('upload');
   const [selectedFile, setSelectedFile] = useState(null);
-  const [jobId, setJobId] = useState(null);
-  const [options, setOptions] = useState({
+  const [processingConfig, setProcessingConfig] = useState({
     strict_mode: false,
     auto_fix: true,
-    skip_validation: []
+    skip_validation: [],
+    scoring_ia: true,
+    notificaciones: true
   });
 
   const {
-    processing,
-    processResult,
-    statistics,
-    configuration,
-    error,
-    uploadAndProcess,
-    getConfiguration,
-    getStatistics,
-    clearError,
-    clearResults
+    uploadState,
+    currentJob,
+    metrics,
+    validationRules,
+    processFile,
+    validateFile,
+    fetchMetrics,
+    fetchValidationRules,
+    clearUploadState,
+    clearCurrentJob
   } = useETLStore();
 
-  const auditoriaId = 'demo-audit-id'; // En implementación real, esto vendría de contexto
+  const auditoriaId = 'demo-audit-2025';
 
+  // Cargar configuración inicial
   useEffect(() => {
-    getConfiguration();
-  }, []);
+    const loadInitialData = async () => {
+      try {
+        await fetchValidationRules();
+        await fetchMetrics();
+      } catch (error) {
+        console.warn('No se pudo cargar configuración inicial:', error);
+      }
+    };
+    
+    loadInitialData();
+  }, [fetchValidationRules, fetchMetrics]);
 
   const handleFileSelect = (file) => {
     setSelectedFile(file);
-    clearError();
-    clearResults();
+    clearUploadState();
+    setCurrentStep('upload');
   };
 
   const handleFileRemove = () => {
     setSelectedFile(null);
+    clearUploadState();
+    clearCurrentJob();
     setCurrentStep('upload');
-    clearError();
-    clearResults();
   };
 
-  const handleProcess = async () => {
-    if (!selectedFile) {
-      alert('Por favor selecciona un archivo');
-      return;
-    }
+  const handleValidateOnly = async () => {
+    if (!selectedFile) return;
 
-    setCurrentStep('processing');
-    const newJobId = `etl_job_${Date.now()}`;
-    setJobId(newJobId);
-
-    const result = await uploadAndProcess(selectedFile, auditoriaId, options);
-    
-    if (result.success) {
-      // Obtener estadísticas después del procesamiento
-      await getStatistics(auditoriaId);
-      setCurrentStep('results');
-    } else {
+    try {
+      setCurrentStep('processing');
+      const results = await validateFile(selectedFile, auditoriaId);
+      setCurrentStep('validation-results');
+    } catch (error) {
+      console.error('Error validando archivo:', error);
       setCurrentStep('upload');
     }
   };
 
-  const handleProcessingComplete = () => {
-    setCurrentStep('results');
-  };
+  const handleProcessFile = async () => {
+    if (!selectedFile) return;
 
-  const handleProcessingError = (error) => {
-    console.error('Error en procesamiento:', error);
-    setCurrentStep('upload');
-  };
-
-  const handleClear = () => {
-    setSelectedFile(null);
-    setJobId(null);
-    setCurrentStep('upload');
-    clearResults();
-    clearError();
-  };
-
-  const handleNewProcess = () => {
-    handleClear();
-  };
-
-  const stepIndicators = [
-    { 
-      id: 'upload', 
-      name: 'Cargar Archivo', 
-      icon: '📁', 
-      description: 'Seleccionar archivo Excel/CSV',
-      completed: selectedFile !== null,
-      active: currentStep === 'upload'
-    },
-    { 
-      id: 'processing', 
-      name: 'Procesamiento', 
-      icon: '⚙️', 
-      description: 'Análisis y validación ETL',
-      completed: processResult !== null,
-      active: currentStep === 'processing'
-    },
-    { 
-      id: 'results', 
-      name: 'Resultados', 
-      icon: '📊', 
-      description: 'Revisión de resultados',
-      completed: processResult !== null && currentStep === 'results',
-      active: currentStep === 'results'
+    try {
+      setCurrentStep('processing');
+      const result = await processFile(selectedFile, auditoriaId, processingConfig);
+      setCurrentStep('results');
+    } catch (error) {
+      console.error('Error procesando archivo:', error);
+      setCurrentStep('upload');
     }
-  ];
+  };
+
+  const handleStartNew = () => {
+    setSelectedFile(null);
+    clearUploadState();
+    clearCurrentJob();
+    setCurrentStep('upload');
+  };
+
+  // Estadísticas mock para demo
+  const mockStats = {
+    hardware_stats: {
+      ram_promedio: 8.4,
+      cpu_promedio: 2.8,
+      ssd_porcentaje: 78
+    },
+    distribucion_por_sitio: {
+      'Sede Principal': 89,
+      'Sucursal Norte': 67,
+      'Sucursal Sur': 45,
+      'Centro Operativo': 44
+    },
+    os_distribution: {
+      'Windows 10': 156,
+      'Windows 11': 89
+    }
+  };
+
+  const renderUploadStep = () => (
+    <div className="space-y-6">
+      <div className="text-center">
+        <CloudArrowUpIcon className="mx-auto h-12 w-12 text-blue-500" />
+        <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">
+          Procesamiento ETL - Parque Informático
+        </h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Sube un archivo Excel o CSV con los datos del parque informático
+        </p>
+      </div>
+
+      <ETLUploader
+        auditoriaId={auditoriaId}
+        onFileSelect={handleFileSelect}
+        onFileRemove={handleFileRemove}
+        onProcessingComplete={() => setCurrentStep('results')}
+      />
+
+      {selectedFile && (
+        <div className="flex gap-3 justify-center">
+          <button
+            onClick={handleValidateOnly}
+            disabled={uploadState.isUploading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            <CheckCircleIcon className="w-4 h-4" />
+            Solo Validar
+          </button>
+          <button
+            onClick={handleProcessFile}
+            disabled={uploadState.isUploading}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            <BoltIcon className="w-4 h-4" />
+            Procesar Completo
+          </button>
+        </div>
+      )}
+
+      {/* Configuración de procesamiento */}
+      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+        <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+          <CogIcon className="w-4 h-4" />
+          Configuración de Procesamiento
+        </h4>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={processingConfig.strict_mode}
+              onChange={(e) => setProcessingConfig(prev => ({
+                ...prev,
+                strict_mode: e.target.checked
+              }))}
+              className="rounded"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">Modo estricto</span>
+          </label>
+          
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={processingConfig.auto_fix}
+              onChange={(e) => setProcessingConfig(prev => ({
+                ...prev,
+                auto_fix: e.target.checked
+              }))}
+              className="rounded"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">Auto-corrección</span>
+          </label>
+          
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={processingConfig.scoring_ia}
+              onChange={(e) => setProcessingConfig(prev => ({
+                ...prev,
+                scoring_ia: e.target.checked
+              }))}
+              className="rounded"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">Scoring IA</span>
+          </label>
+          
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={processingConfig.notificaciones}
+              onChange={(e) => setProcessingConfig(prev => ({
+                ...prev,
+                notificaciones: e.target.checked
+              }))}
+              className="rounded"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">Notificaciones</span>
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderProcessingStep = () => (
+    <div className="space-y-6">
+      <div className="text-center">
+        <ArrowPathIcon className="mx-auto h-12 w-12 text-blue-500 animate-spin" />
+        <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">
+          Procesando Archivo ETL
+        </h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Normalizando campos y aplicando reglas de validación...
+        </p>
+      </div>
+
+      <ETLProgress jobId={currentJob?.job_id} />
+      
+      {currentJob && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+          <h4 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">
+            Estado del Procesamiento
+          </h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-blue-700 dark:text-blue-300">Job ID:</span>
+              <span className="font-mono text-blue-800 dark:text-blue-200">{currentJob.job_id}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-blue-700 dark:text-blue-300">Estado:</span>
+              <span className="font-medium text-blue-800 dark:text-blue-200">{currentJob.estado}</span>
+            </div>
+            {currentJob.estimacion_tiempo && (
+              <div className="flex justify-between">
+                <span className="text-blue-700 dark:text-blue-300">Tiempo estimado:</span>
+                <span className="text-blue-800 dark:text-blue-200">{currentJob.estimacion_tiempo}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderResultsStep = () => (
+    <div className="space-y-6">
+      <div className="text-center">
+        <CheckCircleIcon className="mx-auto h-12 w-12 text-green-500" />
+        <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">
+          Procesamiento Completado
+        </h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          El archivo ha sido procesado exitosamente
+        </p>
+      </div>
+
+      {/* Resumen de procesamiento */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <DocumentTextIcon className="w-5 h-5 text-green-600" />
+            <h4 className="text-sm font-medium text-green-900 dark:text-green-300">
+              Registros Procesados
+            </h4>
+          </div>
+          <p className="mt-1 text-2xl font-bold text-green-600 dark:text-green-400">245</p>
+          <p className="text-xs text-green-700 dark:text-green-500">de 250 originales</p>
+        </div>
+
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <CpuChipIcon className="w-5 h-5 text-blue-600" />
+            <h4 className="text-sm font-medium text-blue-900 dark:text-blue-300">
+              Score de Calidad
+            </h4>
+          </div>
+          <p className="mt-1 text-2xl font-bold text-blue-600 dark:text-blue-400">94%</p>
+          <p className="text-xs text-blue-700 dark:text-blue-500">Excelente calidad</p>
+        </div>
+
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <ExclamationTriangleIcon className="w-5 h-5 text-yellow-600" />
+            <h4 className="text-sm font-medium text-yellow-900 dark:text-yellow-300">
+              Validaciones
+            </h4>
+          </div>
+          <p className="mt-1 text-2xl font-bold text-yellow-600 dark:text-yellow-400">7</p>
+          <p className="text-xs text-yellow-700 dark:text-yellow-500">advertencias menores</p>
+        </div>
+      </div>
+
+      {/* Estadísticas detalladas */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+        <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          <ChartBarIcon className="w-5 h-5" />
+          Estadísticas del Parque Informático
+        </h4>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Hardware Promedio</h5>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>RAM:</span>
+                <span className="font-medium">{mockStats.hardware_stats.ram_promedio} GB</span>
+              </div>
+              <div className="flex justify-between">
+                <span>CPU:</span>
+                <span className="font-medium">{mockStats.hardware_stats.cpu_promedio} GHz</span>
+              </div>
+              <div className="flex justify-between">
+                <span>SSD:</span>
+                <span className="font-medium">{mockStats.hardware_stats.ssd_porcentaje}%</span>
+              </div>
+            </div>
+          </div>
+          
+          <div>
+            <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Distribución por Sitio</h5>
+            <div className="space-y-2 text-sm">
+              {Object.entries(mockStats.distribucion_por_sitio).map(([sitio, cantidad]) => (
+                <div key={sitio} className="flex justify-between">
+                  <span>{sitio}:</span>
+                  <span className="font-medium">{cantidad}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-3 justify-center">
+        <button
+          onClick={handleStartNew}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+        >
+          <ArrowPathIcon className="w-4 h-4" />
+          Procesar Nuevo Archivo
+        </button>
+        <button
+          onClick={() => setCurrentStep('upload')}
+          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+        >
+          Volver al Inicio
+        </button>
+      </div>
+    </div>
+  );
 
   return (
-    <div 
-      className="min-h-screen p-6"
-      style={{ backgroundColor: 'var(--bg-secondary)' }}
-    >
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center">
-          <h1 
-            className="text-3xl font-bold mb-2"
-            style={{ color: 'var(--text-primary)' }}
-          >
-            🔄 Procesador ETL - Parque Informático
-          </h1>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Carga, procesa y valida archivos Excel/CSV del inventario tecnológico con IA integrada
-          </p>
-        </div>
+    <div className="max-w-4xl mx-auto p-6">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+          <CircleStackIcon className="w-8 h-8 text-blue-600" />
+          Procesamiento ETL - Parque Informático
+        </h1>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">
+          Normalización y validación automática de inventario tecnológico
+        </p>
+      </div>
 
-        {/* Step Indicators */}
-        <div 
-          className="card rounded-xl p-6"
-          style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-primary)',
-            boxShadow: '0 2px 8px var(--shadow-light)'
-          }}
-        >
-          <div className="flex items-center justify-between">
-            {stepIndicators.map((step, index) => (
-              <React.Fragment key={step.id}>
-                <div className="flex flex-col items-center text-center">
-                  <div 
-                    className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold transition-all duration-300 ${
-                      step.active ? 'animate-pulse' : ''
-                    }`}
-                    style={{
-                      backgroundColor: step.completed 
-                        ? 'var(--success)' 
-                        : step.active 
-                          ? 'var(--accent-primary)' 
-                          : 'var(--bg-tertiary)',
-                      color: step.completed || step.active ? 'white' : 'var(--text-secondary)'
-                    }}
-                  >
-                    {step.completed ? '✓' : step.icon}
-                  </div>
-                  <div className="mt-2">
-                    <div 
-                      className={`text-sm font-medium ${step.active ? 'font-semibold' : ''}`}
-                      style={{
-                        color: step.completed 
-                          ? 'var(--success)' 
-                          : step.active 
-                            ? 'var(--accent-primary)' 
-                            : 'var(--text-secondary)'
-                      }}
-                    >
-                      {step.name}
-                    </div>
-                    <div 
-                      className="text-xs mt-1"
-                      style={{ color: 'var(--text-secondary)' }}
-                    >
-                      {step.description}
-                    </div>
-                  </div>
-                </div>
-                
-                {index < stepIndicators.length - 1 && (
-                  <div 
-                    className="flex-1 h-0.5 mx-4"
-                    style={{
-                      backgroundColor: stepIndicators[index + 1].completed 
-                        ? 'var(--success)' 
-                        : 'var(--border-primary)'
-                    }}
-                  />
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-
-        {/* Error Display */}
-        {error && (
-          <div 
-            className="border rounded-lg p-4"
-            style={{
-              backgroundColor: 'var(--error-bg)',
-              borderColor: 'var(--error)'
-            }}
-          >
-            <div className="flex">
-              <div style={{ color: 'var(--error)' }}>⚠️</div>
-              <div className="ml-3">
-                <h3 
-                  className="text-sm font-medium"
-                  style={{ color: 'var(--error)' }}
-                >
-                  Error de Procesamiento
-                </h3>
-                <p 
-                  className="mt-1 text-sm"
-                  style={{ color: 'var(--error)' }}
-                >
-                  {error}
-                </p>
+      {/* Steps indicator */}
+      <div className="mb-8">
+        <div className="flex items-center justify-center space-x-8">
+          {[
+            { key: 'upload', label: 'Subir Archivo', icon: DocumentArrowUpIcon },
+            { key: 'processing', label: 'Procesando', icon: CogIcon },
+            { key: 'results', label: 'Resultados', icon: CheckCircleIcon }
+          ].map(({ key, label, icon: Icon }, index) => (
+            <div key={key} className="flex items-center">
+              <div className={`
+                flex items-center justify-center w-10 h-10 rounded-full border-2 
+                ${currentStep === key 
+                  ? 'border-blue-500 bg-blue-500 text-white' 
+                  : index < ['upload', 'processing', 'results'].indexOf(currentStep)
+                    ? 'border-green-500 bg-green-500 text-white'
+                    : 'border-gray-300 bg-white text-gray-400 dark:bg-gray-700 dark:border-gray-600'
+                }
+              `}>
+                <Icon className="w-5 h-5" />
               </div>
+              <span className={`ml-2 text-sm font-medium ${
+                currentStep === key ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+              }`}>
+                {label}
+              </span>
+              {index < 2 && (
+                <div className={`ml-4 h-0.5 w-16 ${
+                  index < ['upload', 'processing', 'results'].indexOf(currentStep)
+                    ? 'bg-green-500'
+                    : 'bg-gray-300 dark:bg-gray-600'
+                }`} />
+              )}
             </div>
-          </div>
-        )}
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Upload & Progress */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Upload Section */}
-            {currentStep === 'upload' && (
-              <div 
-                className="card rounded-xl p-6"
-                style={{
-                  backgroundColor: 'var(--bg-primary)',
-                  borderColor: 'var(--border-primary)',
-                  boxShadow: '0 2px 8px var(--shadow-light)'
-                }}
-              >
-                <h2 
-                  className="text-xl font-semibold mb-4"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  📁 Cargar Archivo de Parque Informático
-                </h2>
-                
-                <ETLUploader
-                  onFileSelect={handleFileSelect}
-                  onFileRemove={handleFileRemove}
-                  processing={processing}
-                />
-
-                {selectedFile && (
-                  <div className="mt-6">
-                    <div 
-                      className="border-t pt-6"
-                      style={{ borderColor: 'var(--border-primary)' }}
-                    >
-                      <h3 
-                        className="text-sm font-medium mb-3"
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        ⚙️ Opciones de Procesamiento
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={options.strict_mode}
-                            onChange={(e) => setOptions({...options, strict_mode: e.target.checked})}
-                            className="rounded focus:ring-2"
-                            style={{
-                              borderColor: 'var(--border-primary)',
-                              accentColor: 'var(--accent-primary)'
-                            }}
-                          />
-                          <span 
-                            className="ml-2 text-sm"
-                            style={{ color: 'var(--text-secondary)' }}
-                          >
-                            Modo estricto (solo registros 100% válidos)
-                          </span>
-                        </label>
-                        
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={options.auto_fix}
-                            onChange={(e) => setOptions({...options, auto_fix: e.target.checked})}
-                            className="rounded focus:ring-2"
-                            style={{
-                              borderColor: 'var(--border-primary)',
-                              accentColor: 'var(--accent-primary)'
-                            }}
-                          />
-                          <span 
-                            className="ml-2 text-sm"
-                            style={{ color: 'var(--text-secondary)' }}
-                          >
-                            Correcciones automáticas
-                          </span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="flex space-x-4 mt-6">
-                      <button
-                        onClick={handleProcess}
-                        disabled={!selectedFile || processing}
-                        className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {processing ? '🔄 Procesando...' : '🚀 Procesar Archivo'}
-                      </button>
-                      
-                      <button
-                        onClick={handleClear}
-                        className="btn-secondary"
-                      >
-                        🗑️ Limpiar
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Processing Section */}
-            {currentStep === 'processing' && (
-              <ETLProgress
-                jobId={jobId}
-                isProcessing={processing}
-                onStatusUpdate={(status) => console.log('Status update:', status)}
-                onComplete={handleProcessingComplete}
-                onError={handleProcessingError}
-              />
-            )}
-
-            {/* Results Section */}
-            {currentStep === 'results' && processResult && (
-              <div 
-                className="card rounded-xl p-6"
-                style={{
-                  backgroundColor: 'var(--bg-primary)',
-                  borderColor: 'var(--border-primary)',
-                  boxShadow: '0 2px 8px var(--shadow-light)'
-                }}
-              >
-                <div className="flex items-center justify-between mb-6">
-                  <h2 
-                    className="text-xl font-semibold"
-                    style={{ color: 'var(--text-primary)' }}
-                  >
-                    📊 Resultados del Procesamiento ETL
-                  </h2>
-                  
-                  <button
-                    onClick={handleNewProcess}
-                    className="btn-primary text-sm"
-                  >
-                    🆕 Nuevo Procesamiento
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  <div 
-                    className="p-4 rounded-lg text-center"
-                    style={{
-                      backgroundColor: 'var(--success-bg)',
-                      borderColor: 'var(--success)'
-                    }}
-                  >
-                    <div 
-                      className="text-2xl font-bold"
-                      style={{ color: 'var(--success)' }}
-                    >
-                      {processResult.registros_procesados || 0}
-                    </div>
-                    <div 
-                      className="text-sm font-medium"
-                      style={{ color: 'var(--success)' }}
-                    >
-                      Registros Procesados
-                    </div>
-                  </div>
-                  
-                  <div 
-                    className="p-4 rounded-lg text-center"
-                    style={{
-                      backgroundColor: 'var(--info-bg)',
-                      borderColor: 'var(--info)'
-                    }}
-                  >
-                    <div 
-                      className="text-2xl font-bold"
-                      style={{ color: 'var(--info)' }}
-                    >
-                      {processResult.registros_originales || 0}
-                    </div>
-                    <div 
-                      className="text-sm font-medium"
-                      style={{ color: 'var(--info)' }}
-                    >
-                      Registros Originales
-                    </div>
-                  </div>
-                  
-                  <div 
-                    className="p-4 rounded-lg text-center"
-                    style={{
-                      backgroundColor: 'rgba(123, 104, 238, 0.1)',
-                      borderColor: 'var(--accent-primary)'
-                    }}
-                  >
-                    <div 
-                      className="text-2xl font-bold"
-                      style={{ color: 'var(--accent-primary)' }}
-                    >
-                      {processResult.validaciones?.scoreValidacion || 0}%
-                    </div>
-                    <div 
-                      className="text-sm font-medium"
-                      style={{ color: 'var(--accent-primary)' }}
-                    >
-                      Score Validación
-                    </div>
-                  </div>
-
-                  <div 
-                    className="p-4 rounded-lg text-center"
-                    style={{
-                      backgroundColor: 'var(--warning-bg)',
-                      borderColor: 'var(--warning)'
-                    }}
-                  >
-                    <div 
-                      className="text-2xl font-bold"
-                      style={{ color: 'var(--warning)' }}
-                    >
-                      {(processResult.validaciones?.errores?.length || 0) + (processResult.validaciones?.advertencias?.length || 0)}
-                    </div>
-                    <div 
-                      className="text-sm font-medium"
-                      style={{ color: 'var(--warning)' }}
-                    >
-                      Issues Detectados
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Actions */}
-                <div className="flex flex-wrap gap-3 mb-6">
-                  <button 
-                    className="btn-secondary text-sm"
-                    onClick={() => {
-                      console.log('Descargar resultados procesados');
-                    }}
-                  >
-                    📥 Descargar Datos Procesados
-                  </button>
-                  
-                  <button 
-                    className="btn-secondary text-sm"
-                    onClick={() => {
-                      console.log('Exportar reporte de validación');
-                    }}
-                  >
-                    📋 Exportar Reporte
-                  </button>
-                  
-                  <button 
-                    className="btn-secondary text-sm"
-                    onClick={() => {
-                      console.log('Enviar a análisis IA');
-                    }}
-                  >
-                    🤖 Enviar a Análisis IA
-                  </button>
-                </div>
-
-                {/* Processing Summary */}
-                {processResult.validaciones && (
-                  <div 
-                    className="border-t pt-4"
-                    style={{ borderColor: 'var(--border-primary)' }}
-                  >
-                    <h3 
-                      className="text-lg font-medium mb-3"
-                      style={{ color: 'var(--text-primary)' }}
-                    >
-                      📈 Resumen de Procesamiento
-                    </h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {processResult.validaciones.errores?.length > 0 && (
-                        <div 
-                          className="p-3 rounded-lg"
-                          style={{
-                            backgroundColor: 'var(--error-bg)',
-                            borderColor: 'var(--error)'
-                          }}
-                        >
-                          <div 
-                            className="text-sm font-medium mb-1"
-                            style={{ color: 'var(--error)' }}
-                          >
-                            ❌ Errores Críticos ({processResult.validaciones.errores.length})
-                          </div>
-                          <div 
-                            className="text-xs"
-                            style={{ color: 'var(--error)' }}
-                          >
-                            Requieren corrección manual
-                          </div>
-                        </div>
-                      )}
-
-                      {processResult.validaciones.advertencias?.length > 0 && (
-                        <div 
-                          className="p-3 rounded-lg"
-                          style={{
-                            backgroundColor: 'var(--warning-bg)',
-                            borderColor: 'var(--warning)'
-                          }}
-                        >
-                          <div 
-                            className="text-sm font-medium mb-1"
-                            style={{ color: 'var(--warning)' }}
-                          >
-                            ⚠️ Advertencias ({processResult.validaciones.advertencias.length})
-                          </div>
-                          <div 
-                            className="text-xs"
-                            style={{ color: 'var(--warning)' }}
-                          >
-                            Recomendaciones de mejora
-                          </div>
-                        </div>
-                      )}
-
-                      {processResult.validaciones.informacion?.length > 0 && (
-                        <div 
-                          className="p-3 rounded-lg"
-                          style={{
-                            backgroundColor: 'var(--info-bg)',
-                            borderColor: 'var(--info)'
-                          }}
-                        >
-                          <div 
-                            className="text-sm font-medium mb-1"
-                            style={{ color: 'var(--info)' }}
-                          >
-                            ℹ️ Información ({processResult.validaciones.informacion.length})
-                          </div>
-                          <div 
-                            className="text-xs"
-                            style={{ color: 'var(--info)' }}
-                          >
-                            Observaciones adicionales
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Right Column - Validator & Configuration */}
-          <div className="space-y-6">
-            <ExcelValidator
-              validationResults={processResult?.validaciones}
-              configuration={configuration}
-              onConfigurationChange={(newConfig) => {
-                console.log('Nueva configuración:', newConfig);
-              }}
-            />
-
-            {/* Statistics */}
-            {statistics && (
-              <div 
-                className="card rounded-xl p-6"
-                style={{
-                  backgroundColor: 'var(--bg-primary)',
-                  borderColor: 'var(--border-primary)',
-                  boxShadow: '0 2px 8px var(--shadow-light)'
-                }}
-              >
-                <h2 
-                  className="text-xl font-semibold mb-4"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  📈 Estadísticas de Auditoría
-                </h2>
-                
-                {statistics.mensaje ? (
-                  <p style={{ color: 'var(--text-secondary)' }}>{statistics.mensaje}</p>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Hardware Stats */}
-                    {statistics.hardware_stats && (
-                      <div>
-                        <h3 
-                          className="text-sm font-medium mb-2"
-                          style={{ color: 'var(--text-secondary)' }}
-                        >
-                          💻 Hardware
-                        </h3>
-                        <div className="grid grid-cols-1 gap-3">
-                          <div 
-                            className="p-3 rounded-lg"
-                            style={{
-                              backgroundColor: 'var(--bg-tertiary)',
-                              borderColor: 'var(--border-primary)'
-                            }}
-                          >
-                            <div 
-                              className="text-sm font-medium"
-                              style={{ color: 'var(--text-primary)' }}
-                            >
-                              RAM Promedio: {statistics.hardware_stats.ram_promedio} GB
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Distribution */}
-                    {statistics.distribucion_por_sitio && Object.keys(statistics.distribucion_por_sitio).length > 0 && (
-                      <div>
-                        <h3 
-                          className="text-sm font-medium mb-2"
-                          style={{ color: 'var(--text-secondary)' }}
-                        >
-                          📍 Por Sitio
-                        </h3>
-                        <div 
-                          className="p-3 rounded-lg max-h-32 overflow-y-auto"
-                          style={{
-                            backgroundColor: 'var(--bg-tertiary)',
-                            borderColor: 'var(--border-primary)'
-                          }}
-                        >
-                          {Object.entries(statistics.distribucion_por_sitio).map(([sitio, count]) => (
-                            <div key={sitio} className="flex justify-between text-sm py-1">
-                              <span style={{ color: 'var(--text-secondary)' }}>{sitio}</span>
-                              <span 
-                                className="font-medium"
-                                style={{ color: 'var(--text-primary)' }}
-                              >
-                                {count}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Help & Tips */}
-            <div 
-              className="card rounded-xl p-6"
-              style={{
-                backgroundColor: 'var(--bg-primary)',
-                borderColor: 'var(--border-primary)',
-                boxShadow: '0 2px 8px var(--shadow-light)'
-              }}
-            >
-              <h3 
-                className="text-lg font-semibold mb-4"
-                style={{ color: 'var(--text-primary)' }}
-              >
-                💡 Consejos y Ayuda
-              </h3>
-              
-              <div className="space-y-3 text-sm">
-                <div 
-                  className="p-3 rounded-lg"
-                  style={{
-                    backgroundColor: 'var(--info-bg)',
-                    borderColor: 'var(--info)'
-                  }}
-                >
-                  <div 
-                    className="font-medium mb-1"
-                    style={{ color: 'var(--info)' }}
-                  >
-                    📊 Formato Recomendado
-                  </div>
-                  <div 
-                    className="text-xs"
-                    style={{ color: 'var(--info)' }}
-                  >
-                    Excel con headers en primera fila y datos normalizados (ej: "8 GB" para RAM)
-                  </div>
-                </div>
-                
-                <div 
-                  className="p-3 rounded-lg"
-                  style={{
-                    backgroundColor: 'var(--success-bg)',
-                    borderColor: 'var(--success)'
-                  }}
-                >
-                  <div 
-                    className="font-medium mb-1"
-                    style={{ color: 'var(--success)' }}
-                  >
-                    ✅ Campos Críticos
-                  </div>
-                  <div 
-                    className="text-xs"
-                    style={{ color: 'var(--success)' }}
-                  >
-                    Asegúrate de incluir: CPU, RAM, SO, Antivirus y datos del proveedor
-                  </div>
-                </div>
-                
-                <div 
-                  className="p-3 rounded-lg"
-                  style={{
-                    backgroundColor: 'var(--warning-bg)',
-                    borderColor: 'var(--warning)'
-                  }}
-                >
-                  <div 
-                    className="font-medium mb-1"
-                    style={{ color: 'var(--warning)' }}
-                  >
-                    🤖 IA Integrada
-                  </div>
-                  <div 
-                    className="text-xs"
-                    style={{ color: 'var(--warning)' }}
-                  >
-                    El sistema usa Ollama local para análisis inteligente de datos
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
+      </div>
+
+      {/* Main content */}
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6">
+        {currentStep === 'upload' && renderUploadStep()}
+        {currentStep === 'processing' && renderProcessingStep()}
+        {currentStep === 'results' && renderResultsStep()}
+        {currentStep === 'validation-results' && renderResultsStep()}
       </div>
     </div>
   );

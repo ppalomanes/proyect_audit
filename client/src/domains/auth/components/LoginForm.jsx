@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
-import { useAuthStore } from '../authStore';
+import useAuthStore from '../authStore';
 
 const LoginForm = ({ onSuccess }) => {
   const [formData, setFormData] = useState({
@@ -9,7 +9,7 @@ const LoginForm = ({ onSuccess }) => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const { login, loading, error, clearError } = useAuthStore();
+  const { login, isLoading, error, clearError } = useAuthStore(); // CORREGIDO: login en lugar de smartLogin
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -24,8 +24,13 @@ const LoginForm = ({ onSuccess }) => {
     e.preventDefault();
     clearError();
     
-    const result = await login(formData.email, formData.password, rememberMe);
+    console.log('🔐 Intentando login con:', { email: formData.email });
+    
+    // CORREGIDO: Usar login en lugar de smartLogin
+    const result = await login(formData.email, formData.password);
+    
     if (result.success) {
+      console.log('✅ Login exitoso, redirigiendo...');
       onSuccess?.();
     }
   };
@@ -144,10 +149,10 @@ const LoginForm = ({ onSuccess }) => {
         <div>
           <button
             type="submit"
-            disabled={loading}
+            disabled={isLoading}
             className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
           >
-            {loading ? (
+            {isLoading ? (
               <>
                 <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

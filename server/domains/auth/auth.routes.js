@@ -9,7 +9,7 @@ const router = express.Router();
 
 // Middleware personalizado
 const { asyncHandler } = require('../../shared/middleware/errorHandler');
-const { operationLogger } = require('../../shared/middleware/requestLogger');
+const { operationLogger } = require('../../shared/middleware/request-logger');
 
 // Controlador y middleware de autenticación
 const authController = require('./auth.controller');
@@ -22,7 +22,7 @@ const {
   requireVerifiedEmail,
   loginRateLimit,
   sanitizeUserData
-} = require('./middleware/authentication');
+} = require('./middleware/authentication-simple');
 
 const {
   requireAdmin,
@@ -30,7 +30,7 @@ const {
   canModifyUser,
   logSensitiveAction,
   checkMaintenanceMode
-} = require('./middleware/authorization');
+} = require('./middleware/authorization-simple');
 
 // Validaciones de entrada
 const loginValidation = [
@@ -221,6 +221,13 @@ router.post('/logout',
 
 // GET /api/auth/validate-token - Validar token actual
 router.get('/validate-token',
+  authenticate,
+  requireActiveAccount,
+  authController.validateToken
+);
+
+// GET /api/auth/validate - Alias para validate-token (compatibilidad frontend)
+router.get('/validate',
   authenticate,
   requireActiveAccount,
   authController.validateToken

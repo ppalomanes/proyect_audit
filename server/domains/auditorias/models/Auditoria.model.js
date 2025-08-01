@@ -1,387 +1,233 @@
-/**
- * Modelo Auditoria - Gestión de Auditorías
- * Portal de Auditorías Técnicas
- */
-
 const { DataTypes } = require('sequelize');
+const { sequelize } = require('../../../config/database');
 
-const defineAuditoria = (sequelize) => {
-  const Auditoria = sequelize.define('Auditoria', {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-      allowNull: false
+const Auditoria = sequelize.define('Auditoria', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  codigo: {
+    type: DataTypes.STRING(20),
+    unique: true,
+    allowNull: false,
+    comment: 'Código único: AUD-2025-001'
+  },
+  proveedor_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'usuarios',
+      key: 'id'
     },
-
-    // Información básica
-    titulo: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-      validate: {
-        len: {
-          args: [5, 255],
-          msg: 'Título debe tener entre 5 y 255 caracteres'
-        }
-      }
+    comment: 'ID del proveedor (usuario con rol PROVEEDOR)'
+  },
+  auditor_principal_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'usuarios', 
+      key: 'id'
     },
-
-    descripcion: {
-      type: DataTypes.TEXT,
-      allowNull: true
+    comment: 'ID del auditor principal asignado'
+  },
+  periodo: {
+    type: DataTypes.STRING(10),
+    allowNull: false,
+    comment: 'Período semestral: 2025-S1, 2025-S2'
+  },
+  fecha_programada: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    comment: 'Fecha programada para la auditoría'
+  },
+  fecha_inicio: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW,
+    comment: 'Fecha de inicio del proceso'
+  },
+  fecha_limite: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Fecha límite para carga de documentos'
+  },
+  fecha_finalizacion: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Fecha de finalización de la auditoría'
+  },
+  estado: {
+    type: DataTypes.ENUM(
+      'CONFIGURACION',
+      'NOTIFICACION', 
+      'CARGA_PRESENCIAL',
+      'CARGA_PARQUE',
+      'VALIDACION_AUTOMATICA',
+      'REVISION_AUDITOR',
+      'NOTIFICACION_RESULTADOS',
+      'COMPLETADA',
+      'SUSPENDIDA',
+      'CANCELADA'
+    ),
+    defaultValue: 'CONFIGURACION',
+    allowNull: false
+  },
+  etapa_actual: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1,
+    allowNull: false,
+    validate: {
+      min: 1,
+      max: 8
     },
-
-    codigo_auditoria: {
-      type: DataTypes.STRING(50),
-      allowNull: false,
+    comment: 'Etapa actual del workflow (1-8)'
+  },
+  alcance: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+    comment: 'Descripción del alcance de la auditoría'
+  },
+  observaciones: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Observaciones generales'
+  },
+  
+  // Configuración de umbrales técnicos
+  umbrales_tecnicos: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Umbrales técnicos específicos para esta auditoría'
+  },
+  
+  // Contadores automáticos
+  total_puestos_os: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: 'Total de puestos On Site'
+  },
+  total_puestos_ho: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: 'Total de puestos Home Office'
+  },
+  sin_home_office: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Sitio sin modalidad Home Office'
+  },
+  
+  // Resultados consolidados
+  score_general: {
+    type: DataTypes.DECIMAL(5, 2),
+    allowNull: true,
+    comment: 'Score general de cumplimiento (0-100)'
+  },
+  cumplimiento_critico: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+    comment: 'Cumple con todos los requisitos críticos'
+  },
+  
+  // Metadatos
+  creado_por: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'usuarios',
+      key: 'id'
+    }
+  },
+  fecha_creacion: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  },
+  fecha_ultima_actualizacion: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  },
+  
+  // Control de versiones
+  version: {
+    type: DataTypes.STRING(10),
+    defaultValue: '1.0',
+    comment: 'Versión de la auditoría'
+  },
+  
+  // Flags de control
+  activa: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  },
+  archivada: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  }
+}, {
+  tableName: 'auditorias',
+  timestamps: true,
+  createdAt: 'fecha_creacion',
+  updatedAt: 'fecha_ultima_actualizacion',
+  indexes: [
+    {
+      fields: ['codigo'],
       unique: true
     },
-
-    // Clasificación
-    tipo_auditoria: {
-      type: DataTypes.ENUM,
-      values: ['INICIAL', 'SEGUIMIENTO', 'EXTRAORDINARIA', 'RENOVACION'],
-      allowNull: false,
-      defaultValue: 'INICIAL'
+    {
+      fields: ['proveedor_id', 'periodo']
     },
-
-    modalidad: {
-      type: DataTypes.ENUM,
-      values: ['PRESENCIAL', 'VIRTUAL', 'HIBRIDA'],
-      allowNull: false,
-      defaultValue: 'HIBRIDA'
+    {
+      fields: ['estado', 'etapa_actual']
     },
-
-    // Relaciones principales
-    proveedor_id: {
-      type: DataTypes.UUID,
-      allowNull: false
+    {
+      fields: ['fecha_programada']
     },
-
-    auditor_principal_id: {
-      type: DataTypes.UUID,
-      allowNull: false
-    },
-
-    auditor_secundario_id: {
-      type: DataTypes.UUID,
-      allowNull: true
-    },
-
-    // Fechas y programación
-    fecha_programada: {
-      type: DataTypes.DATE,
-      allowNull: false
-    },
-
-    fecha_inicio_real: {
-      type: DataTypes.DATE,
-      allowNull: true
-    },
-
-    fecha_fin_programada: {
-      type: DataTypes.DATE,
-      allowNull: true
-    },
-
-    fecha_fin_real: {
-      type: DataTypes.DATE,
-      allowNull: true
-    },
-
-    // Estado del proceso
-    estado: {
-      type: DataTypes.ENUM,
-      values: [
-        'PROGRAMADA',
-        'ETAPA_1_NOTIFICACION',
-        'ETAPA_2_CARGA_DOCUMENTOS', 
-        'ETAPA_3_VALIDACION_DOCUMENTOS',
-        'ETAPA_4_ANALISIS_PARQUE',
-        'ETAPA_5_VISITA_PRESENCIAL',
-        'ETAPA_6_INFORME_PRELIMINAR',
-        'ETAPA_7_REVISION_OBSERVACIONES',
-        'ETAPA_8_INFORME_FINAL',
-        'COMPLETADA',
-        'CANCELADA',
-        'SUSPENDIDA'
-      ],
-      allowNull: false,
-      defaultValue: 'PROGRAMADA'
-    },
-
-    etapa_actual: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0,
-      validate: {
-        min: 0,
-        max: 8
-      }
-    },
-
-    progreso_porcentaje: {
-      type: DataTypes.DECIMAL(5, 2),
-      allowNull: false,
-      defaultValue: 0.00,
-      validate: {
-        min: 0.00,
-        max: 100.00
-      }
-    },
-
-    // Configuración técnica
-    version_pliego: {
-      type: DataTypes.STRING(50),
-      allowNull: false
-    },
-
-    criterios_evaluacion: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      defaultValue: {}
-    },
-
-    configuracion_etapas: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      defaultValue: {
-        etapa_1: { dias_limite: 5, notificaciones: true },
-        etapa_2: { dias_limite: 15, documentos_requeridos: 13 },
-        etapa_3: { dias_limite: 10, requiere_validacion_manual: true },
-        etapa_4: { dias_limite: 7, requiere_ia: true },
-        etapa_5: { dias_limite: 3, modalidad: 'presencial' },
-        etapa_6: { dias_limite: 5, requiere_revision: true },
-        etapa_7: { dias_limite: 10, permite_observaciones: true },
-        etapa_8: { dias_limite: 5, genera_certificado: true }
-      }
-    },
-
-    // Información de visita presencial
-    direccion_visita: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-
-    fecha_visita_programada: {
-      type: DataTypes.DATE,
-      allowNull: true
-    },
-
-    duracion_estimada_dias: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      defaultValue: 30
-    },
-
-    // Resultados y scoring
-    puntaje_total: {
-      type: DataTypes.DECIMAL(5, 2),
-      allowNull: true,
-      validate: {
-        min: 0.00,
-        max: 100.00
-      }
-    },
-
-    puntajes_por_categoria: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      defaultValue: {}
-    },
-
-    nivel_cumplimiento: {
-      type: DataTypes.ENUM,
-      values: ['EXCELENTE', 'BUENO', 'ACEPTABLE', 'DEFICIENTE', 'CRITICO'],
-      allowNull: true
-    },
-
-    // Observaciones y notas
-    observaciones_generales: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-
-    recomendaciones: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-
-    observaciones_proveedor: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-
-    // Archivos y documentos finales
-    informe_final_url: {
-      type: DataTypes.STRING(255),
-      allowNull: true
-    },
-
-    certificado_url: {
-      type: DataTypes.STRING(255),
-      allowNull: true
-    },
-
-    // Metadatos de seguimiento
-    notificaciones_enviadas: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      defaultValue: []
-    },
-
-    historial_cambios: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      defaultValue: []
-    },
-
-    // Campos de auditoría
-    creado_por: {
-      type: DataTypes.UUID,
-      allowNull: true
-    },
-
-    actualizado_por: {
-      type: DataTypes.UUID,
-      allowNull: true
+    {
+      fields: ['activa', 'archivada']
     }
-  }, {
-    tableName: 'auditorias',
-    timestamps: true,
-    paranoid: true,
-    createdAt: 'creado_en',
-    updatedAt: 'actualizado_en',
-    deletedAt: 'eliminado_en',
-    
-    indexes: [
-      {
-        unique: true,
-        fields: ['codigo_auditoria']
-      },
-      {
-        fields: ['estado']
-      },
-      {
-        fields: ['etapa_actual']
-      },
-      {
-        fields: ['proveedor_id']
-      },
-      {
-        fields: ['auditor_principal_id']
-      },
-      {
-        fields: ['fecha_programada']
-      },
-      {
-        fields: ['tipo_auditoria']
-      }
-    ],
-
-    scopes: {
-      activas: {
-        where: {
-          estado: {
-            [sequelize.Sequelize.Op.notIn]: ['COMPLETADA', 'CANCELADA']
-          }
-        }
-      },
-      
-      porEtapa: (etapa) => ({
-        where: {
-          etapa_actual: etapa
-        }
-      }),
-      
-      porAuditor: (auditorId) => ({
-        where: {
-          [sequelize.Sequelize.Op.or]: [
-            { auditor_principal_id: auditorId },
-            { auditor_secundario_id: auditorId }
-          ]
-        }
-      })
+  ],
+  hooks: {
+    beforeUpdate: (auditoria) => {
+      auditoria.fecha_ultima_actualizacion = new Date();
     }
-  });
+  }
+});
 
-  // Métodos de instancia
-  Auditoria.prototype.puedeAvanzarEtapa = function() {
-    return this.estado !== 'COMPLETADA' && this.estado !== 'CANCELADA';
-  };
-
-  Auditoria.prototype.avanzarEtapa = async function() {
-    if (!this.puedeAvanzarEtapa()) {
-      throw new Error('No se puede avanzar la etapa en el estado actual');
-    }
-
-    this.etapa_actual += 1;
-    this.progreso_porcentaje = (this.etapa_actual / 8) * 100;
-    
-    // Actualizar estado según la etapa
-    const estadosPorEtapa = {
-      1: 'ETAPA_1_NOTIFICACION',
-      2: 'ETAPA_2_CARGA_DOCUMENTOS',
-      3: 'ETAPA_3_VALIDACION_DOCUMENTOS',
-      4: 'ETAPA_4_ANALISIS_PARQUE',
-      5: 'ETAPA_5_VISITA_PRESENCIAL',
-      6: 'ETAPA_6_INFORME_PRELIMINAR',
-      7: 'ETAPA_7_REVISION_OBSERVACIONES',
-      8: 'ETAPA_8_INFORME_FINAL'
-    };
-
-    this.estado = estadosPorEtapa[this.etapa_actual] || 'COMPLETADA';
-    
-    if (this.etapa_actual >= 8) {
-      this.fecha_fin_real = new Date();
-      this.estado = 'COMPLETADA';
-    }
-
-    await this.save();
-  };
-
-  Auditoria.prototype.generarCodigoAuditoria = function() {
-    const año = new Date().getFullYear();
-    const mes = String(new Date().getMonth() + 1).padStart(2, '0');
-    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-    return `AUD-${año}${mes}-${random}`;
-  };
-
-  Auditoria.prototype.calcularDiasRestantes = function() {
-    if (!this.fecha_fin_programada) return null;
-    
-    const ahora = new Date();
-    const fin = new Date(this.fecha_fin_programada);
-    const diferencia = fin.getTime() - ahora.getTime();
-    return Math.ceil(diferencia / (1000 * 3600 * 24));
-  };
-
-  Auditoria.prototype.estaVencida = function() {
-    const diasRestantes = this.calcularDiasRestantes();
-    return diasRestantes !== null && diasRestantes < 0;
-  };
-
-  // Métodos estáticos
-  Auditoria.buscarPorCodigo = async function(codigo) {
-    return await this.findOne({
-      where: { codigo_auditoria: codigo }
-    });
-  };
-
-  Auditoria.buscarActivas = async function() {
-    return await this.scope('activas').findAll({
-      order: [['fecha_programada', 'ASC']]
-    });
-  };
-
-  Auditoria.buscarPorProveedor = async function(proveedorId) {
-    return await this.findAll({
-      where: { proveedor_id: proveedorId },
-      order: [['creado_en', 'DESC']]
-    });
-  };
-
-  return Auditoria;
+// Métodos de instancia
+Auditoria.prototype.puedeAvanzarEtapa = function() {
+  const etapasFinales = ['COMPLETADA', 'SUSPENDIDA', 'CANCELADA'];
+  return !etapasFinales.includes(this.estado) && this.etapa_actual < 8;
 };
 
-module.exports = defineAuditoria;
+Auditoria.prototype.obtenerProgresoWorkflow = function() {
+  return {
+    etapa_actual: this.etapa_actual,
+    progreso_porcentaje: Math.round((this.etapa_actual / 8) * 100),
+    estado: this.estado,
+    puede_avanzar: this.puedeAvanzarEtapa()
+  };
+};
+
+// Métodos estáticos
+Auditoria.generarCodigo = async function(año = new Date().getFullYear()) {
+  const ultimaAuditoria = await this.findOne({
+    where: {
+      codigo: {
+        [sequelize.Sequelize.Op.like]: `AUD-${año}-%`
+      }
+    },
+    order: [['codigo', 'DESC']]
+  });
+  
+  let numeroSecuencial = 1;
+  if (ultimaAuditoria) {
+    const match = ultimaAuditoria.codigo.match(/AUD-\d{4}-(\d{3})/);
+    if (match) {
+      numeroSecuencial = parseInt(match[1]) + 1;
+    }
+  }
+  
+  return `AUD-${año}-${numeroSecuencial.toString().padStart(3, '0')}`;
+};
+
+module.exports = Auditoria;

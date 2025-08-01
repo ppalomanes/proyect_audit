@@ -154,20 +154,50 @@ const closeConnection = async () => {
 };
 
 /**
- * Configuración específica para testing
- * Base de datos en memoria para tests unitarios
+ * Configuración específica para testing con XAMPP
+ * Usa MySQL test database en lugar de SQLite
  */
 const testConfig = {
-  dialect: 'sqlite',
-  storage: ':memory:',
+  dialect: 'mysql',
+  host: 'localhost',
+  port: 3306,
+  database: DB_NAME + '_test',
+  username: DB_USER,
+  password: DB_PASSWORD,
   logging: false,
-  sync: { force: true }
+  sync: { force: true },
+  pool: {
+    max: 5,
+    min: 1,
+    acquire: 30000,
+    idle: 10000
+  }
 };
 
-// Instancia de Sequelize para testing
-const testSequelize = NODE_ENV === 'test' 
-  ? new Sequelize(testConfig)
-  : null;
+// Instancia de Sequelize para testing - usar MySQL test database
+let testSequelize = null;
+if (NODE_ENV === 'test') {
+  try {
+    // Intentar primero con SQLite si está disponible
+    testSequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: ':memory:',
+      logging: false,
+      sync: { force: true }
+    });
+    console.log('🟢 Testing con SQLite en memoria');
+  } catch (error) {
+    console.log('⚠️  SQLite no disponible, usando MySQL test database');
+    // Usar MySQL test database como fallback
+    testSequelize = new Sequelize(
+      testConfig.database,
+      testConfig.username, 
+      testConfig.password,
+      testConfig
+    );
+    console.log('🟡 Testing con MySQL: portal_auditorias_test');
+  }
+}
 
 module.exports = {
   sequelize,

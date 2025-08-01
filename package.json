@@ -21,6 +21,9 @@
     "claude:test": "node scripts/claude-md-tester.js",
     "claude:rebuild": "npm run claude:generate:all && npm run claude:validate",
     "claude:health": "npm run claude:test && npm run claude:validate",
+    "chat:check": "node scripts/check-chat-server.js",
+    "chat:status": "node scripts/check-chat-server.js",
+    "chat:fix": "node scripts/fix-chat-connection.js",
     "precommit": "npm run claude:generate && npm run claude:validate",
     "setup:dev": "bash scripts/setup-dev.sh",
     "deploy": "bash scripts/deploy.sh"

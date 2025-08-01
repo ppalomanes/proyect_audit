@@ -176,4 +176,4 @@ module.exports = {
   ConflictError,
   ETLError,
   IAError
-};
+}; 

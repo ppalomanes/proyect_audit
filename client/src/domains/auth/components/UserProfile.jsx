@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuthStore } from '../authStore';
+import useAuthStore from '../authStore';
 
 const UserProfile = () => {
   const { user, updateProfile, changePassword, loading, error, clearError } = useAuthStore();

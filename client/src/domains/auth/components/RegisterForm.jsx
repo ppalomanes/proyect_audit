@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
-import { useAuthStore } from '../authStore';
+import useAuthStore from '../authStore';
 
 const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
   const [formData, setFormData] = useState({

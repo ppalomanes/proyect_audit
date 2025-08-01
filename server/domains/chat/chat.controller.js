@@ -1,4 +1,5 @@
 const chatService = require('./chat.service');
+const BitacoraService = require('../bitacora/bitacora.service');
 const { validationResult } = require('express-validator');
 
 class ChatController {
@@ -16,6 +17,20 @@ class ChatController {
         limite: parseInt(limite) || 20,
         offset: parseInt(offset) || 0,
         estado
+      });
+
+      // Registrar en bitácora
+      await BitacoraService.registrar({
+        usuario_id,
+        seccion: 'chat',
+        accion: 'consultar_conversaciones',
+        descripcion: `Usuario consultó ${conversaciones.length} conversaciones`,
+        ip_address: req.ip,
+        user_agent: req.get('User-Agent'),
+        datos_adicionales: {
+          total_conversaciones: conversaciones.length,
+          filtros_aplicados: { limite, offset, estado }
+        }
       });
 
       res.json({

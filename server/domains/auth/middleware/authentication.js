@@ -3,7 +3,7 @@
  * Portal de Auditorías Técnicas
  */
 
-const authService = require('../auth.service');
+const authService = require('../auth.service-simple');
 const { getModels } = require('../../../models');
 
 /**

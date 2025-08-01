@@ -1,716 +1,770 @@
 /**
  * Controlador ETL - Portal de Auditorías Técnicas
  * Endpoints para procesamiento de parque informático
+ * 
+ * Versión 2.0 - Integrado con nuevos modelos ETL
  */
 
 const ETLService = require('./etl.service');
-const { v4: uuidv4 } = require('uuid');
+const configurarModelosETL = require('./models');
+const { body, validationResult } = require('express-validator');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs').promises;
+
+// Configuración de multer para upload de archivos
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../../../uploads/etl');
+    try {
+      await fs.mkdir(uploadDir, { recursive: true });
+      cb(null, uploadDir);
+    } catch (error) {
+      cb(error);
+    }
+  },
+  filename: (req, file, cb) => {
+    const timestamp = Date.now();
+    const cleanName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    cb(null, `${timestamp}_${cleanName}`);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB máximo
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.xlsx', '.xls', '.csv'];
+    const fileExt = path.extname(file.originalname).toLowerCase();
+    
+    if (allowedTypes.includes(fileExt)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipo de archivo no soportado. Use .xlsx, .xls o .csv'));
+    }
+  }
+});
 
 class ETLController {
   constructor() {
     this.etlService = new ETLService();
-    this.jobs = new Map(); // Simulación de jobs en memoria
+    this.models = null;
+    this.initialized = false;
   }
 
+  // Inicializar modelos
+  async initialize(sequelize) {
+    if (!this.initialized) {
+      this.models = configurarModelosETL(sequelize);
+      this.etlService.setModels(this.models);
+      this.initialized = true;
+    }
+  }
+
+  // Middleware para validar inicialización
+  requireInitialization = (req, res, next) => {
+    if (!this.initialized) {
+      return res.status(500).json({
+        success: false,
+        message: 'Controlador ETL no inicializado'
+      });
+    }
+    next();
+  };
+
   /**
+   * POST /api/etl/process
    * Procesar archivo de parque informático
    */
-  async procesarParqueInformatico(req, res) {
-    try {
-      const jobId = uuidv4();
-      const archivo = req.file;
-      const configuracion = req.body.configuracion ? JSON.parse(req.body.configuracion) : {};
-      
-      // Crear job inicial
-      const job = {
-        job_id: jobId,
-        estado: 'INICIADO',
-        fecha_inicio: new Date(),
-        archivo_nombre: archivo.originalname,
-        archivo_tamaño: archivo.size,
-        configuracion: configuracion,
-        total_registros: 0,
-        registros_procesados: 0,
-        progreso: 0
-      };
-      
-      this.jobs.set(jobId, job);
-      
-      // Respuesta inmediata
-      res.status(200).json({
-        success: true,
-        job_id: jobId,
-        estado: 'INICIADO',
-        estimacion_tiempo: '3-5 minutos',
-        message: 'Procesamiento ETL iniciado exitosamente'
-      });
-      
-      // Procesamiento asíncrono
-      this.procesarAsync(jobId, archivo, configuracion);
-      
-    } catch (error) {
-      console.error('❌ Error en procesamiento ETL:', error.message);
-      res.status(500).json({
-        success: false,
-        error: 'Error procesando parque informático',
-        message: error.message
-      });
-    }
-  }
+  procesarParqueInformatico = [
+    upload.single('archivo'),
+    body('auditoria_id').isUUID().withMessage('ID de auditoría inválido'),
+    body('configuracion').optional().isJSON().withMessage('Configuración debe ser JSON válido'),
+    this.requireInitialization,
+    
+    async (req, res) => {
+      try {
+        // Validar entrada
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          return res.status(400).json({
+            success: false,
+            message: 'Datos de entrada inválidos',
+            errors: errors.array()
+          });
+        }
 
-  /**
-   * Procesamiento asíncrono de archivo
-   */
-  async procesarAsync(jobId, archivo, configuracion) {
-    try {
-      const job = this.jobs.get(jobId);
-      
-      // Simular procesamiento con etapas
-      await this.sleep(2000);
-      job.estado = 'PARSEANDO';
-      job.progreso = 20;
-      this.jobs.set(jobId, job);
-      
-      await this.sleep(3000);
-      job.estado = 'NORMALIZANDO';
-      job.progreso = 50;
-      job.total_registros = 100; // Simulado
-      this.jobs.set(jobId, job);
-      
-      await this.sleep(2000);
-      job.estado = 'VALIDANDO';
-      job.progreso = 80;
-      job.registros_procesados = 80;
-      this.jobs.set(jobId, job);
-      
-      await this.sleep(1000);
-      job.estado = 'COMPLETADO';
-      job.progreso = 100;
-      job.registros_procesados = 100;
-      job.fecha_fin = new Date();
-      job.resultados = {
-        registros_validos: 95,
-        registros_con_advertencias: 5,
-        registros_con_errores: 0,
-        score_calidad_promedio: 92.5
-      };
-      this.jobs.set(jobId, job);
-      
-    } catch (error) {
-      const job = this.jobs.get(jobId);
-      job.estado = 'ERROR';
-      job.error_detalle = error.message;
-      this.jobs.set(jobId, job);
-    }
-  }
+        // Verificar archivo
+        if (!req.file) {
+          return res.status(400).json({
+            success: false,
+            message: 'Archivo requerido'
+          });
+        }
 
-  /**
-   * Validar archivo sin procesar (dry-run)
-   */
-  async validarSolamente(req, res) {
-    try {
-      const archivo = req.file;
-      
-      // Simulación de validación
-      const validacion = {
-        es_valido: true,
-        archivo_nombre: archivo.originalname,
-        archivo_tamaño: archivo.size,
-        formato_detectado: archivo.mimetype.includes('excel') ? 'Excel' : 'CSV',
-        errores_criticos: [],
-        advertencias: [
-          'Algunos campos pueden requerir normalización',
-          'Se detectaron valores faltantes en campos opcionales'
-        ],
-        sugerencias_mejora: [
-          'Incluir más información de hardware',
-          'Verificar formatos de fecha'
-        ]
-      };
-      
-      res.status(200).json({
-        success: true,
-        message: 'Validación completada',
-        data: validacion
-      });
-      
-    } catch (error) {
-      console.error('❌ Error en validación:', error.message);
-      res.status(500).json({
-        success: false,
-        error: 'Error validando archivo',
-        message: error.message
-      });
-    }
-  }
+        const {
+          auditoria_id,
+          documento_id = null,
+          configuracion = '{}'
+        } = req.body;
 
-  /**
-   * Procesar múltiples archivos en lote
-   */
-  async procesarLote(req, res) {
-    try {
-      const archivos = req.files;
-      const jobIds = [];
-      
-      for (const archivo of archivos) {
-        const jobId = uuidv4();
-        const job = {
-          job_id: jobId,
-          estado: 'INICIADO',
-          fecha_inicio: new Date(),
-          archivo_nombre: archivo.originalname,
-          archivo_tamaño: archivo.size,
-          es_lote: true
-        };
+        const configParsed = JSON.parse(configuracion);
+
+        console.log(`🔄 Iniciando procesamiento ETL para auditoría: ${auditoria_id}`);
+
+        // Procesar archivo de forma asíncrona
+        const resultado = await this.etlService.procesarParqueInformatico({
+          archivo_path: req.file.path,
+          auditoria_id,
+          documento_id,
+          usuario_id: req.user.id,
+          configuracion: configParsed
+        });
+
+        res.status(200).json({
+          success: true,
+          message: 'Procesamiento ETL iniciado',
+          data: {
+            job_id: resultado.job_id,
+            estado: resultado.estado,
+            estimacion_tiempo: '3-5 minutos'
+          }
+        });
+
+      } catch (error) {
+        console.error('❌ Error en procesamiento ETL:', error);
         
-        this.jobs.set(jobId, job);
-        jobIds.push(jobId);
-        
-        // Procesar cada archivo asíncronamente
-        this.procesarAsync(jobId, archivo, {});
+        // Limpiar archivo en caso de error
+        if (req.file) {
+          try {
+            await fs.unlink(req.file.path);
+          } catch (unlinkError) {
+            console.error('Error eliminando archivo:', unlinkError);
+          }
+        }
+
+        res.status(500).json({
+          success: false,
+          message: 'Error en procesamiento ETL',
+          error: error.message
+        });
       }
-      
-      res.status(200).json({
-        success: true,
-        message: `Procesamiento en lote iniciado para ${archivos.length} archivos`,
-        job_ids: jobIds,
-        total_archivos: archivos.length
-      });
-      
-    } catch (error) {
-      console.error('❌ Error en procesamiento lote:', error.message);
-      res.status(500).json({
-        success: false,
-        error: 'Error procesando lote',
-        message: error.message
-      });
     }
-  }
+  ];
 
   /**
-   * Listar jobs ETL
+   * GET /api/etl/jobs/:jobId/status
+   * Obtener estado de un trabajo ETL
    */
-  async listarJobs(req, res) {
-    try {
-      const { page = 1, limit = 10, estado } = req.query;
-      
-      let jobs = Array.from(this.jobs.values());
-      
-      // Filtrar por estado si se especifica
-      if (estado) {
-        jobs = jobs.filter(job => job.estado === estado);
+  obtenerEstadoJob = [
+    this.requireInitialization,
+    
+    async (req, res) => {
+      try {
+        const { jobId } = req.params;
+
+        const estado = await this.etlService.obtenerEstadoJob(jobId);
+
+        res.status(200).json({
+          success: true,
+          data: estado
+        });
+
+      } catch (error) {
+        console.error('❌ Error obteniendo estado job:', error);
+        
+        if (error.message.includes('no encontrado')) {
+          return res.status(404).json({
+            success: false,
+            message: 'Trabajo ETL no encontrado'
+          });
+        }
+
+        res.status(500).json({
+          success: false,
+          message: 'Error obteniendo estado del trabajo',
+          error: error.message
+        });
       }
-      
-      // Paginación
-      const total = jobs.length;
-      const startIndex = (page - 1) * limit;
-      const endIndex = startIndex + parseInt(limit);
-      const paginatedJobs = jobs.slice(startIndex, endIndex);
-      
-      res.status(200).json({
-        success: true,
-        jobs: paginatedJobs,
-        pagination: {
-          page: parseInt(page),
+    }
+  ];
+
+  /**
+   * GET /api/etl/jobs/:jobId/results
+   * Obtener resultados completos de un trabajo ETL
+   */
+  obtenerResultadosJob = [
+    this.requireInitialization,
+    
+    async (req, res) => {
+      try {
+        const { jobId } = req.params;
+
+        const resultados = await this.etlService.obtenerResultadosJob(jobId);
+
+        res.status(200).json({
+          success: true,
+          data: resultados
+        });
+
+      } catch (error) {
+        console.error('❌ Error obteniendo resultados job:', error);
+        
+        if (error.message.includes('no encontrado')) {
+          return res.status(404).json({
+            success: false,
+            message: 'Trabajo ETL no encontrado'
+          });
+        }
+
+        res.status(500).json({
+          success: false,
+          message: 'Error obteniendo resultados del trabajo',
+          error: error.message
+        });
+      }
+    }
+  ];
+
+  /**
+   * POST /api/etl/validate-only
+   * Validar archivo sin procesarlo (dry-run)
+   */
+  validarArchivo = [
+    upload.single('archivo'),
+    this.requireInitialization,
+    
+    async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({
+            success: false,
+            message: 'Archivo requerido'
+          });
+        }
+
+        console.log(`🔍 Validando archivo: ${req.file.originalname}`);
+
+        const resultados = await this.etlService.validarArchivo(req.file.path);
+
+        // Limpiar archivo temporal
+        await fs.unlink(req.file.path);
+
+        res.status(200).json({
+          success: true,
+          data: resultados
+        });
+
+      } catch (error) {
+        console.error('❌ Error validando archivo:', error);
+        
+        // Limpiar archivo en caso de error
+        if (req.file) {
+          try {
+            await fs.unlink(req.file.path);
+          } catch (unlinkError) {
+            console.error('Error eliminando archivo:', unlinkError);
+          }
+        }
+
+        res.status(500).json({
+          success: false,
+          message: 'Error validando archivo',
+          error: error.message
+        });
+      }
+    }
+  ];
+
+  /**
+   * GET /api/etl/validation-rules
+   * Obtener reglas de validación disponibles
+   */
+  obtenerReglasValidacion = [
+    this.requireInitialization,
+    
+    async (req, res) => {
+      try {
+        const { categoria } = req.query;
+
+        const reglas = await this.etlService.obtenerReglasValidacion(categoria);
+
+        res.status(200).json({
+          success: true,
+          data: reglas
+        });
+
+      } catch (error) {
+        console.error('❌ Error obteniendo reglas:', error);
+        
+        res.status(500).json({
+          success: false,
+          message: 'Error obteniendo reglas de validación',
+          error: error.message
+        });
+      }
+    }
+  ];
+
+  /**
+   * POST /api/etl/validation-rules/defaults
+   * Crear reglas de validación por defecto
+   */
+  crearReglasPorDefecto = [
+    this.requireInitialization,
+    
+    async (req, res) => {
+      try {
+        const reglas = await this.etlService.crearReglasPorDefecto(req.user.id);
+
+        res.status(201).json({
+          success: true,
+          message: `${reglas.length} reglas creadas`,
+          data: reglas
+        });
+
+      } catch (error) {
+        console.error('❌ Error creando reglas por defecto:', error);
+        
+        res.status(500).json({
+          success: false,
+          message: 'Error creando reglas por defecto',
+          error: error.message
+        });
+      }
+    }
+  ];
+
+  /**
+   * GET /api/etl/metrics
+   * Obtener métricas de procesamiento ETL
+   */
+  obtenerMetricas = [
+    this.requireInitialization,
+    
+    async (req, res) => {
+      try {
+        const { auditoria_id } = req.query;
+
+        const estadisticas = await this.etlService.obtenerEstadisticasETL(auditoria_id);
+
+        res.status(200).json({
+          success: true,
+          data: estadisticas
+        });
+
+      } catch (error) {
+        console.error('❌ Error obteniendo métricas:', error);
+        
+        res.status(500).json({
+          success: false,
+          message: 'Error obteniendo métricas ETL',
+          error: error.message
+        });
+      }
+    }
+  ];
+
+  /**
+   * DELETE /api/etl/cleanup
+   * Limpiar datos antiguos
+   */
+  limpiarDatosAntiguos = [
+    this.requireInitialization,
+    
+    async (req, res) => {
+      try {
+        const { dias = 30 } = req.query;
+
+        const resultado = await this.etlService.limpiarDatosAntiguos(parseInt(dias));
+
+        res.status(200).json({
+          success: true,
+          message: 'Limpieza completada',
+          data: resultado
+        });
+
+      } catch (error) {
+        console.error('❌ Error en limpieza:', error);
+        
+        res.status(500).json({
+          success: false,
+          message: 'Error en limpieza de datos',
+          error: error.message
+        });
+      }
+    }
+  ];
+
+  /**
+   * GET /api/etl/jobs
+   * Listar trabajos ETL
+   */
+  listarJobs = [
+    this.requireInitialization,
+    
+    async (req, res) => {
+      try {
+        const { 
+          auditoria_id,
+          estado,
+          limit = 20,
+          offset = 0
+        } = req.query;
+
+        const whereClause = {};
+        
+        if (auditoria_id) {
+          whereClause.auditoria_id = auditoria_id;
+        }
+        
+        if (estado) {
+          whereClause.estado = estado;
+        }
+
+        const jobs = await this.models.ETLJob.findAndCountAll({
+          where: whereClause,
           limit: parseInt(limit),
-          total: total,
-          pages: Math.ceil(total / limit)
+          offset: parseInt(offset),
+          order: [['creado_en', 'DESC']]
+        });
+
+        res.status(200).json({
+          success: true,
+          data: {
+            jobs: jobs.rows,
+            total: jobs.count,
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+          }
+        });
+
+      } catch (error) {
+        console.error('❌ Error listando jobs:', error);
+        
+        res.status(500).json({
+          success: false,
+          message: 'Error listando trabajos ETL',
+          error: error.message
+        });
+      }
+    }
+  ];
+
+  /**
+   * GET /api/etl/parque-informatico/:auditoriaId
+   * Obtener datos de parque informático procesados
+   */
+  obtenerParqueInformatico = [
+    this.requireInitialization,
+    
+    async (req, res) => {
+      try {
+        const { auditoriaId } = req.params;
+        const { 
+          estado = 'VALIDADO',
+          nivel_cumplimiento,
+          limit = 100,
+          offset = 0
+        } = req.query;
+
+        const whereClause = {
+          auditoria_id: auditoriaId
+        };
+
+        if (estado !== 'TODOS') {
+          whereClause.estado_etl = estado;
         }
-      });
-      
-    } catch (error) {
-      console.error('❌ Error listando jobs:', error.message);
-      res.status(500).json({
-        success: false,
-        error: 'Error listando jobs',
-        message: error.message
-      });
-    }
-  }
 
-  /**
-   * Obtener estado de un job específico
-   */
-  async obtenerEstadoJob(req, res) {
-    try {
-      const { job_id } = req.params;
-      const job = this.jobs.get(job_id);
-      
-      if (!job) {
-        return res.status(404).json({
-          success: false,
-          error: 'Job no encontrado',
-          message: `No se encontró job con ID: ${job_id}`
-        });
-      }
-      
-      res.status(200).json({
-        success: true,
-        data: job
-      });
-      
-    } catch (error) {
-      console.error('❌ Error obteniendo estado job:', error.message);
-      res.status(500).json({
-        success: false,
-        error: 'Error obteniendo estado del job',
-        message: error.message
-      });
-    }
-  }
-
-  /**
-   * Obtener resultados de un job
-   */
-  async obtenerResultadosJob(req, res) {
-    try {
-      const { job_id } = req.params;
-      const job = this.jobs.get(job_id);
-      
-      if (!job) {
-        return res.status(404).json({
-          success: false,
-          error: 'Job no encontrado'
-        });
-      }
-      
-      if (job.estado !== 'COMPLETADO') {
-        return res.status(400).json({
-          success: false,
-          error: 'Job no completado',
-          message: `Job está en estado: ${job.estado}`
-        });
-      }
-      
-      res.status(200).json({
-        success: true,
-        data: {
-          job_id: job_id,
-          resumen: job.resultados,
-          datos_procesados: [], // Datos simulados
-          archivo_original: job.archivo_nombre,
-          tiempo_procesamiento: job.fecha_fin - job.fecha_inicio
+        if (nivel_cumplimiento) {
+          whereClause.nivel_cumplimiento = nivel_cumplimiento;
         }
-      });
-      
-    } catch (error) {
-      console.error('❌ Error obteniendo resultados:', error.message);
-      res.status(500).json({
-        success: false,
-        error: 'Error obteniendo resultados del job',
-        message: error.message
-      });
+
+        const registros = await this.models.ParqueInformatico.findAndCountAll({
+          where: whereClause,
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          order: [['score_total', 'DESC'], ['sitio', 'ASC'], ['usuario_id', 'ASC']]
+        });
+
+        // Obtener estadísticas
+        const estadisticas = await this.models.ParqueInformatico.obtenerEstadisticas(auditoriaId);
+
+        res.status(200).json({
+          success: true,
+          data: {
+            registros: registros.rows,
+            total: registros.count,
+            estadisticas,
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+          }
+        });
+
+      } catch (error) {
+        console.error('❌ Error obteniendo parque informático:', error);
+        
+        res.status(500).json({
+          success: false,
+          message: 'Error obteniendo datos de parque informático',
+          error: error.message
+        });
+      }
     }
-  }
+  ];
 
   /**
-   * Reintentar job fallido
+   * GET /api/etl/health
+   * Health check del módulo ETL
    */
-  async reintentarJob(req, res) {
+  healthCheck = async (req, res) => {
     try {
-      const { job_id } = req.params;
-      const job = this.jobs.get(job_id);
-      
-      if (!job) {
-        return res.status(404).json({
-          success: false,
-          error: 'Job no encontrado'
-        });
-      }
-      
-      if (job.estado !== 'ERROR') {
-        return res.status(400).json({
-          success: false,
-          error: 'Solo se pueden reintentar jobs en estado ERROR'
-        });
-      }
-      
-      // Reiniciar job
-      job.estado = 'INICIADO';
-      job.progreso = 0;
-      job.error_detalle = null;
-      job.fecha_inicio = new Date();
-      this.jobs.set(job_id, job);
+      const isHealthy = this.initialized && this.models !== null;
       
       res.status(200).json({
-        success: true,
-        message: 'Job reintentado exitosamente',
-        job_id: job_id
+        success: isHealthy,
+        status: isHealthy ? 'operational' : 'degraded',
+        database: 'connected',
+        models: this.initialized ? 'initialized' : 'not initialized',
+        timestamp: new Date().toISOString()
       });
-      
     } catch (error) {
-      console.error('❌ Error reintentando job:', error.message);
-      res.status(500).json({
+      console.error('❌ Error en health check:', error);
+      res.status(503).json({
         success: false,
-        error: 'Error reintentando job',
-        message: error.message
+        message: 'Módulo ETL no disponible',
+        error: error.message
       });
     }
-  }
+  };
 
   /**
-   * Cancelar job en progreso
+   * GET /api/etl/validation-rules
+   * Obtener reglas de validación disponibles
    */
-  async cancelarJob(req, res) {
+  obtenerReglasValidacion = async (req, res) => {
     try {
-      const { job_id } = req.params;
-      const job = this.jobs.get(job_id);
-      
-      if (!job) {
-        return res.status(404).json({
-          success: false,
-          error: 'Job no encontrado'
+      if (!this.initialized) {
+        // Devolver reglas por defecto si no está inicializado
+        return res.status(200).json({
+          success: true,
+          data: [
+            { id: 1, nombre: 'RAM Mínima', categoria: 'hardware', activa: true },
+            { id: 2, nombre: 'CPU Mínima', categoria: 'hardware', activa: true },
+            { id: 3, nombre: 'OS Soportado', categoria: 'software', activa: true }
+          ]
         });
       }
-      
-      if (job.estado === 'COMPLETADO') {
-        return res.status(400).json({
-          success: false,
-          error: 'No se puede cancelar un job completado'
-        });
-      }
-      
-      job.estado = 'CANCELADO';
-      job.fecha_fin = new Date();
-      this.jobs.set(job_id, job);
-      
-      res.status(200).json({
-        success: true,
-        message: 'Job cancelado exitosamente',
-        job_id: job_id
-      });
-      
-    } catch (error) {
-      console.error('❌ Error cancelando job:', error.message);
-      res.status(500).json({
-        success: false,
-        error: 'Error cancelando job',
-        message: error.message
-      });
-    }
-  }
 
-  /**
-   * Obtener reglas de validación
-   */
-  async obtenerReglasValidacion(req, res) {
-    try {
-      const reglas = {
-        reglas_esquema: {
-          campos_requeridos: ['proveedor', 'sitio', 'usuario_id'],
-          campos_opcionales: ['hostname', 'cpu_brand', 'ram_gb']
-        },
-        reglas_negocio: {
-          ram_minima_gb: 4,
-          cpu_minima_ghz: 2.0,
-          os_soportados: ['Windows 10', 'Windows 11'],
-          navegadores_permitidos: ['Chrome', 'Firefox', 'Edge']
-        },
-        umbrales: {
-          score_minimo_calidad: 70,
-          max_errores_permitidos: 10
-        }
-      };
+      const reglas = await this.etlService.obtenerReglasValidacion(req.query.categoria);
       
       res.status(200).json({
         success: true,
         data: reglas
       });
-      
     } catch (error) {
-      console.error('❌ Error obteniendo reglas:', error.message);
+      console.error('❌ Error obteniendo reglas:', error);
       res.status(500).json({
         success: false,
-        error: 'Error obteniendo reglas de validación',
-        message: error.message
+        message: 'Error obteniendo reglas de validación',
+        error: error.message
       });
     }
-  }
+  };
 
   /**
-   * Configurar reglas de validación
+   * POST /api/etl/validation-rules/defaults
+   * Crear reglas de validación por defecto
    */
-  async configurarReglas(req, res) {
+  crearReglasPorDefecto = async (req, res) => {
     try {
-      const { reglas } = req.body;
+      if (!this.initialized) {
+        return res.status(503).json({
+          success: false,
+          message: 'Módulo ETL no inicializado'
+        });
+      }
+
+      const reglas = await this.etlService.crearReglasPorDefecto(req.user.id);
       
-      // Simulación de configuración
+      res.status(201).json({
+        success: true,
+        message: 'Reglas por defecto creadas',
+        data: reglas
+      });
+    } catch (error) {
+      console.error('❌ Error creando reglas:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error creando reglas por defecto',
+        error: error.message
+      });
+    }
+  };
+
+  /**
+   * GET /api/etl/jobs
+   * Listar trabajos ETL
+   */
+  listarJobs = async (req, res) => {
+    try {
+      if (!this.initialized) {
+        return res.status(200).json({
+          success: true,
+          data: []
+        });
+      }
+
+      const { auditoria_id, estado, limit = 10, offset = 0 } = req.query;
+      
+      const whereClause = {};
+      if (auditoria_id) whereClause.auditoria_id = auditoria_id;
+      if (estado) whereClause.estado = estado;
+
+      const jobs = await this.models.ETLJob.findAndCountAll({
+        where: whereClause,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        order: [['createdAt', 'DESC']]
+      });
+
       res.status(200).json({
         success: true,
-        message: 'Reglas de validación configuradas exitosamente',
-        reglas_aplicadas: reglas
-      });
-      
-    } catch (error) {
-      console.error('❌ Error configurando reglas:', error.message);
-      res.status(500).json({
-        success: false,
-        error: 'Error configurando reglas',
-        message: error.message
-      });
-    }
-  }
-
-  /**
-   * Obtener esquema normalizado
-   */
-  async obtenerEsquema(req, res) {
-    try {
-      const esquema = {
-        version: '1.0.0',
-        total_campos: 28,
-        esquema: {
-          // Metadatos
-          audit_id: { tipo: 'string', requerido: true },
-          audit_date: { tipo: 'date', requerido: true },
-          audit_cycle: { tipo: 'string', requerido: true },
-          
-          // Identificación
-          proveedor: { tipo: 'string', requerido: true },
-          sitio: { tipo: 'string', requerido: true },
-          usuario_id: { tipo: 'string', requerido: true },
-          hostname: { tipo: 'string', requerido: false },
-          
-          // Hardware
-          cpu_brand: { tipo: 'string', valores: ['Intel', 'AMD'] },
-          cpu_model: { tipo: 'string', requerido: true },
-          cpu_speed_ghz: { tipo: 'float', min: 1.0, max: 6.0 },
-          ram_gb: { tipo: 'integer', min: 2, max: 128 },
-          disk_type: { tipo: 'string', valores: ['HDD', 'SSD', 'NVME'] },
-          disk_capacity_gb: { tipo: 'integer', min: 100 },
-          
-          // Software
-          os_name: { tipo: 'string', valores: ['Windows 10', 'Windows 11', 'Linux'] },
-          os_version: { tipo: 'string', requerido: true },
-          browser_name: { tipo: 'string', valores: ['Chrome', 'Firefox', 'Edge'] },
-          browser_version: { tipo: 'string', requerido: true },
-          antivirus_brand: { tipo: 'string', requerido: true },
-          antivirus_model: { tipo: 'string', requerido: true },
-          
-          // Periféricos
-          headset_brand: { tipo: 'string', requerido: true },
-          headset_model: { tipo: 'string', requerido: true },
-          
-          // Conectividad
-          isp_name: { tipo: 'string', requerido: true },
-          connection_type: { tipo: 'string', valores: ['Fibra', 'Cable', 'DSL'] },
-          speed_download_mbps: { tipo: 'integer', min: 10 },
-          speed_upload_mbps: { tipo: 'integer', min: 5 }
+        data: {
+          jobs: jobs.rows,
+          total: jobs.count,
+          limit: parseInt(limit),
+          offset: parseInt(offset)
         }
-      };
-      
-      res.status(200).json({
-        success: true,
-        data: esquema
       });
-      
     } catch (error) {
-      console.error('❌ Error obteniendo esquema:', error.message);
+      console.error('❌ Error listando jobs:', error);
       res.status(500).json({
         success: false,
-        error: 'Error obteniendo esquema',
-        message: error.message
+        message: 'Error listando trabajos ETL',
+        error: error.message
       });
     }
-  }
+  };
 
   /**
-   * Obtener métricas de procesamiento
+   * GET /api/etl/metrics
+   * Obtener métricas de procesamiento ETL
    */
-  async obtenerMetricas(req, res) {
+  obtenerMetricas = async (req, res) => {
     try {
-      const { periodo = '7d' } = req.query;
-      
-      const metricas = {
-        periodo: periodo,
-        total_jobs: this.jobs.size,
-        jobs_completados: Array.from(this.jobs.values()).filter(j => j.estado === 'COMPLETADO').length,
-        jobs_en_progreso: Array.from(this.jobs.values()).filter(j => ['INICIADO', 'PARSEANDO', 'NORMALIZANDO', 'VALIDANDO'].includes(j.estado)).length,
-        jobs_con_error: Array.from(this.jobs.values()).filter(j => j.estado === 'ERROR').length,
-        success_rate: 94.2,
-        tiempo_promedio_procesamiento: '4m 15s',
-        total_registros_procesados: 15420,
-        score_calidad_promedio: 88.7
-      };
+      if (!this.initialized) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            total_jobs: 0,
+            success_rate: 0,
+            average_processing_time: 0
+          }
+        });
+      }
+
+      const metricas = await this.etlService.obtenerEstadisticasETL(req.query.auditoria_id);
       
       res.status(200).json({
         success: true,
         data: metricas
       });
-      
     } catch (error) {
-      console.error('❌ Error obteniendo métricas:', error.message);
+      console.error('❌ Error obteniendo métricas:', error);
       res.status(500).json({
         success: false,
-        error: 'Error obteniendo métricas',
-        message: error.message
-      });
-    }
-  }
-
-  /**
-   * Dashboard de calidad
-   */
-  async obtenerDashboardCalidad(req, res) {
-    try {
-      const dashboard = {
-        timestamp: new Date().toISOString(),
-        metricas_calidad: {
-          score_promedio_global: 88.7,
-          registros_con_score_alto: 78, // >90
-          registros_con_score_medio: 18, // 70-90
-          registros_con_score_bajo: 4, // <70
-          campos_con_mas_errores: ['browser_version', 'antivirus_model', 'headset_brand'],
-          proveedores_mejor_calidad: ['Proveedor A', 'Proveedor C'],
-          tendencia_calidad: 'mejorando'
-        },
-        alertas: [
-          {
-            tipo: 'warning',
-            mensaje: 'Incremento en errores de validación de RAM en últimas 24h',
-            impacto: 'medio'
-          }
-        ]
-      };
-      
-      res.status(200).json({
-        success: true,
-        data: dashboard
-      });
-      
-    } catch (error) {
-      console.error('❌ Error obteniendo dashboard:', error.message);
-      res.status(500).json({
-        success: false,
-        error: 'Error obteniendo dashboard de calidad',
-        message: error.message
-      });
-    }
-  }
-
-  /**
-   * Generar reporte de calidad
-   */
-  async generarReporteCalidad(req, res) {
-    try {
-      const { tipo_reporte, formato_salida = 'json' } = req.body;
-      
-      const reporteId = uuidv4();
-      
-      res.status(200).json({
-        success: true,
-        message: 'Reporte de calidad generado exitosamente',
-        reporte_id: reporteId,
-        tipo: tipo_reporte,
-        formato: formato_salida,
-        url_descarga: `/api/etl/reports/${reporteId}/download`
-      });
-      
-    } catch (error) {
-      console.error('❌ Error generando reporte:', error.message);
-      res.status(500).json({
-        success: false,
-        error: 'Error generando reporte de calidad',
-        message: error.message
-      });
-    }
-  }
-
-  /**
-   * Health check del módulo ETL
-   */
-  async healthCheck(req, res) {
-    try {
-      const health = {
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        module: 'ETL',
-        version: '1.0.0',
-        uptime: process.uptime(),
-        dependencies: {
-          excel_parser: 'available',
-          csv_parser: 'available',
-          field_normalizer: 'available',
-          business_validator: 'available'
-        },
-        jobs_activos: Array.from(this.jobs.values()).filter(j => j.estado !== 'COMPLETADO' && j.estado !== 'ERROR' && j.estado !== 'CANCELADO').length
-      };
-
-      res.status(200).json({
-        success: true,
-        data: health
-      });
-      
-    } catch (error) {
-      res.status(503).json({
-        success: false,
-        status: 'unhealthy',
+        message: 'Error obteniendo métricas ETL',
         error: error.message
       });
     }
-  }
+  };
 
   /**
-   * Obtener versión del módulo
+   * POST /api/etl/validate-only
+   * Validar archivo sin procesarlo
    */
-  async obtenerVersion(req, res) {
-    try {
-      const version = {
-        module: 'ETL',
-        version: '1.0.0',
-        build: new Date().toISOString(),
-        features: [
-          'Excel/CSV Processing',
-          'Field Normalization',
-          'Business Rules Validation',
-          'Async Job Management',
-          'Quality Scoring',
-          'Integration with IA Module'
-        ],
-        endpoints_disponibles: 15
-      };
+  validarArchivo = [
+    upload.single('archivo'),
+    
+    async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({
+            success: false,
+            message: 'Archivo requerido para validación'
+          });
+        }
 
+        console.log(`🔍 Validando archivo: ${req.file.originalname}`);
+
+        const resultado = await this.etlService.validarArchivo(req.file.path);
+
+        // Limpiar archivo después de validar
+        try {
+          await fs.unlink(req.file.path);
+        } catch (unlinkError) {
+          console.error('Error eliminando archivo temporal:', unlinkError);
+        }
+
+        res.status(200).json({
+          success: true,
+          data: resultado
+        });
+
+      } catch (error) {
+        console.error('❌ Error validando archivo:', error);
+        
+        // Limpiar archivo en caso de error
+        if (req.file) {
+          try {
+            await fs.unlink(req.file.path);
+          } catch (unlinkError) {
+            console.error('Error eliminando archivo:', unlinkError);
+          }
+        }
+
+        res.status(500).json({
+          success: false,
+          message: 'Error validando archivo',
+          error: error.message
+        });
+      }
+    }
+  ];
+
+  /**
+   * DELETE /api/etl/cleanup
+   * Limpiar datos antiguos
+   */
+  limpiarDatosAntiguos = async (req, res) => {
+    try {
+      if (!this.initialized) {
+        return res.status(503).json({
+          success: false,
+          message: 'Módulo ETL no inicializado'
+        });
+      }
+
+      const dias = req.query.dias || 30;
+      const resultado = await this.etlService.limpiarDatosAntiguos(parseInt(dias));
+      
       res.status(200).json({
         success: true,
-        data: version
+        message: 'Limpieza completada',
+        data: resultado
       });
-      
     } catch (error) {
+      console.error('❌ Error en limpieza:', error);
       res.status(500).json({
         success: false,
-        error: 'Error obteniendo información de versión',
-        message: error.message
+        message: 'Error limpiando datos antiguos',
+        error: error.message
       });
     }
-  }
-
-  /**
-   * Utilidad para sleep
-   */
-  sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
+  };
 }
 
-// Instancia singleton del controlador
-const etlController = new ETLController();
-
-// Exportar métodos del controlador
-module.exports = {
-  procesarParqueInformatico: etlController.procesarParqueInformatico.bind(etlController),
-  validarSolamente: etlController.validarSolamente.bind(etlController),
-  procesarLote: etlController.procesarLote.bind(etlController),
-  listarJobs: etlController.listarJobs.bind(etlController),
-  obtenerEstadoJob: etlController.obtenerEstadoJob.bind(etlController),
-  obtenerResultadosJob: etlController.obtenerResultadosJob.bind(etlController),
-  reintentarJob: etlController.reintentarJob.bind(etlController),
-  cancelarJob: etlController.cancelarJob.bind(etlController),
-  obtenerReglasValidacion: etlController.obtenerReglasValidacion.bind(etlController),
-  configurarReglas: etlController.configurarReglas.bind(etlController),
-  obtenerEsquema: etlController.obtenerEsquema.bind(etlController),
-  obtenerMetricas: etlController.obtenerMetricas.bind(etlController),
-  obtenerDashboardCalidad: etlController.obtenerDashboardCalidad.bind(etlController),
-  generarReporteCalidad: etlController.generarReporteCalidad.bind(etlController),
-  healthCheck: etlController.healthCheck.bind(etlController),
-  obtenerVersion: etlController.obtenerVersion.bind(etlController)
-};
+module.exports = ETLController;

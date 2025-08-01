@@ -1,271 +1,162 @@
 /**
- * Servidor Principal Simplificado - Portal de Auditorías Técnicas
- * Versión sin servicios externos para testing inicial
+ * Servidor Simplificado para Testing - Portal de Auditorías
+ * Versión mínima para verificar que todo funciona
  */
 
-const express = require("express");
-const cors = require("cors");
-const helmet = require("helmet");
-const compression = require("compression");
-const rateLimit = require("express-rate-limit");
-const morgan = require("morgan");
-const path = require("path");
+const express = require('express');
+const cors = require('cors');
+const { testConnection } = require('./config/database');
 
-// Middleware personalizado
-const { asyncHandler } = require("./shared/middleware/error-handler");
-const { requestLogger } = require("./shared/middleware/request-logger");
-
-// Variables de entorno
-const {
-  PORT = 3001,
-  NODE_ENV = "development",
-  CORS_ORIGIN = "http://localhost:3000",
-  RATE_LIMIT_WINDOW = 15,
-  RATE_LIMIT_MAX = 100,
-} = process.env;
-
-// Crear aplicación Express
 const app = express();
+const PORT = 3002;
 
-console.log(
-  "🚀 Iniciando Portal de Auditorías Técnicas (modo simplificado)..."
-);
-console.log(`📍 Entorno: ${NODE_ENV}`);
-console.log(`🌐 Puerto: ${PORT}`);
+// Middleware básico
+app.use(cors());
+app.use(express.json());
 
-// === CONFIGURACIÓN DE MIDDLEWARES GLOBALES ===
-
-// Seguridad básica
-app.use(
-  helmet({
-    crossOriginEmbedderPolicy: false,
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "blob:"],
-        connectSrc: ["'self'"],
-      },
-    },
-  })
-);
-
-// CORS configurado
-app.use(
-  cors({
-    origin: NODE_ENV === "development" ? true : CORS_ORIGIN.split(","),
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  })
-);
-
-// Compresión de respuestas
-app.use(compression());
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: RATE_LIMIT_WINDOW * 60 * 1000,
-  max: RATE_LIMIT_MAX,
-  message: {
-    error: "Demasiadas solicitudes desde esta IP",
-    retryAfter: RATE_LIMIT_WINDOW * 60,
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use("/api/", limiter);
-
-// Parsing de body
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-// Logging de requests
-if (NODE_ENV === "development") {
-  app.use(morgan("dev"));
-}
-
-// Middleware personalizado de logging
-app.use(requestLogger);
-
-// === HEALTH CHECK MEJORADO ===
-
-app.get(
-  "/api/health",
-  asyncHandler(async (req, res) => {
-    const health = {
-      status: "ok",
+// Ruta de health check
+app.get('/api/health', async (req, res) => {
+  try {
+    // Verificar conexión a BD
+    await testConnection();
+    
+    res.json({
+      status: 'ok',
       timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: NODE_ENV,
-      version: "1.0.0",
-      services: {},
-    };
-
-    // Test servicios externos (sin bloquear)
-    try {
-      const { testConnection } = require("./config/database");
-      await testConnection();
-      health.services.database = "connected";
-    } catch (error) {
-      health.services.database = "disconnected";
-      health.status = "degraded";
-      console.log("⚠️  Base de datos no disponible (OK para testing inicial)");
-    }
-
-    try {
-      const { testConnections } = require("./config/redis");
-      const redisResults = await testConnections();
-      health.services.redis = redisResults.every(
-        (r) => r.status === "connected"
-      )
-        ? "connected"
-        : "partial";
-    } catch (error) {
-      health.services.redis = "disconnected";
-      console.log("⚠️  Redis no disponible (OK para testing inicial)");
-    }
-
-    try {
-      const { checkOllamaHealth } = require("./config/ollama");
-      const ollamaHealth = await checkOllamaHealth();
-      health.services.ollama = ollamaHealth.status;
-      health.services.ollama_models = ollamaHealth.available_models || [];
-    } catch (error) {
-      health.services.ollama = "unavailable";
-      console.log("⚠️  Ollama no disponible (se usará modo fallback)");
-    }
-
-    res.status(health.status === "ok" ? 200 : 503).json(health);
-  })
-);
-
-// === REGISTRO DE RUTAS ===
-
-// Rutas IA (principal funcionalidad)
-try {
-  const iaRoutes = require("./domains/ia/ia.routes");
-  app.use("/api/ia", iaRoutes);
-  console.log("✅ Rutas IA registradas exitosamente");
-} catch (error) {
-  console.error("❌ Error registrando rutas IA:", error.message);
-}
-
-// Rutas ETL (procesamiento de parque informático)
-try {
-  const etlRoutes = require("./domains/etl/etl.routes");
-  app.use("/api/etl", etlRoutes);
-  console.log("✅ Rutas ETL registradas exitosamente");
-} catch (error) {
-  console.error("❌ Error registrando rutas ETL:", error.message);
-}
-
-// Rutas AUDITORIAS (workflow de auditoría)
-try {
-  const auditoriasRoutes = require("./domains/auditorias/auditorias.routes");
-  app.use("/api/auditorias", auditoriasRoutes);
-  console.log("✅ Rutas AUDITORIAS registradas exitosamente");
-} catch (error) {
-  console.error("❌ Error registrando rutas AUDITORIAS:", error.message);
-}
-
-// === RUTAS DE ARCHIVOS ESTÁTICOS ===
-
-// Crear directorio de uploads si no existe
-const uploadsDir = path.join(__dirname, "uploads");
-const fs = require("fs");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-  console.log("📁 Directorio uploads creado");
-}
-
-// Servir archivos de uploads
-app.use("/uploads", express.static(uploadsDir));
-
-// === MANEJO DE ERRORES ===
-
-// Ruta no encontrada
-app.use("*", (req, res) => {
-  res.status(404).json({
-    error: "Endpoint no encontrado",
-    path: req.originalUrl,
-    method: req.method,
-    timestamp: new Date().toISOString(),
-    available_endpoints: [
-      "GET /api/health",
-      "GET /api/ia/health", 
-      "GET /api/ia/metrics",
-      "GET /api/etl/health",
-      "GET /api/etl/version",
-      "GET /api/etl/schema",
-      "GET /api/auditorias/health"
-    ],
-  });
-});
-
-// Error handler global
-app.use((error, req, res, next) => {
-  console.error("🚨 Error capturado:", error.message);
-
-  res.status(500).json({
-    error:
-      NODE_ENV === "development" ? error.message : "Error interno del servidor",
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// === INICIO DEL SERVIDOR ===
-
-const server = app.listen(PORT, () => {
-  console.log("\n✅ Servicios inicializados (modo simplificado)");
-  console.log("🎯 Servidor listo para recibir solicitudes\n");
-
-  console.log(
-    `🌟 Portal de Auditorías Técnicas ejecutándose en puerto ${PORT}`
-  );
-  console.log(`🔗 API disponible en: http://localhost:${PORT}/api`);
-  console.log(`💊 Health check: http://localhost:${PORT}/api/health`);
-
-  if (NODE_ENV === "development") {
-    console.log(
-      `🎨 Frontend: http://localhost:3000 (cuando esté implementado)`
-    );
+      database: 'connected',
+      version: '1.0.0',
+      message: 'Portal de Auditorías funcionando correctamente'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      database: 'disconnected',
+      error: error.message
+    });
   }
-
-  console.log("\n📋 Endpoints disponibles:");
-  console.log("   GET  /api/health - Estado del sistema");
-  console.log("   GET  /api/ia/health - Estado de Ollama");
-  console.log("   GET  /api/ia/metrics - Métricas de IA");
-  console.log("   POST /api/ia/analyze/* - Análisis IA (en desarrollo)");
-  console.log("   GET  /api/etl/health - Estado del módulo ETL");
-  console.log("   GET  /api/etl/version - Versión del módulo ETL");
-  console.log("   GET  /api/etl/schema - Esquema normalizado");
-  console.log("   POST /api/etl/process - Procesar archivo parque informático\n");
 });
 
-// === GESTIÓN DE SHUTDOWN GRACEFUL ===
-
-const gracefulShutdown = () => {
-  console.log("\n🔄 Iniciando shutdown graceful...");
-
-  server.close(() => {
-    console.log("✅ Servidor cerrado correctamente");
-    process.exit(0);
+// Ruta básica de auditorías
+app.get('/api/auditorias', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Endpoint de auditorías funcionando',
+    data: []
   });
+});
+
+// Ruta básica de bitácora
+app.get('/api/bitacora', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Endpoint de bitácora funcionando',
+    data: []
+  });
+});
+
+// Endpoints básicos de autenticación para el cliente
+app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body;
+  
+  // Simulación básica de login
+  if (email && password) {
+    res.json({
+      success: true,
+      user: {
+        id: 1,
+        email: email,
+        name: 'Usuario Demo',
+        role: 'admin'
+      },
+      token: 'demo-token-123',
+      message: 'Login exitoso (modo demo)'
+    });
+  } else {
+    res.status(400).json({
+      success: false,
+      message: 'Email y password requeridos'
+    });
+  }
+});
+
+app.get('/api/auth/validate', (req, res) => {
+  // Validación básica de token
+  const token = req.headers.authorization;
+  
+  if (token && token.includes('demo-token')) {
+    res.json({
+      success: true,
+      user: {
+        id: 1,
+        email: 'demo@example.com',
+        name: 'Usuario Demo',
+        role: 'admin'
+      },
+      message: 'Token válido (modo demo)'
+    });
+  } else {
+    res.status(401).json({
+      success: false,
+      message: 'Token inválido o expirado'
+    });
+  }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Logout exitoso'
+  });
+});
+
+// Manejo de errores simple
+app.use((err, req, res, next) => {
+  console.error('Error:', err.message);
+  res.status(500).json({
+    success: false,
+    error: err.message
+  });
+});
+
+// Iniciar servidor
+const startServer = async () => {
+  try {
+    console.log('🚀 Iniciando servidor simplificado...');
+    
+    // Verificar conexión a BD
+    await testConnection();
+    console.log('✅ Conexión a base de datos exitosa');
+    
+    app.listen(PORT, () => {
+      console.log(`✅ Servidor ejecutándose en puerto ${PORT}`);
+      console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+      console.log(`📋 Auditorías: http://localhost:${PORT}/api/auditorias`);
+      console.log(`📝 Bitácora: http://localhost:${PORT}/api/bitacora`);
+    });
+    
+  } catch (error) {
+    console.error('❌ Error iniciando servidor:', error.message);
+    
+    if (error.name === 'SequelizeConnectionError') {
+      console.error('💡 Solución: Verifica que MySQL esté ejecutándose en XAMPP');
+      console.error('   1. Abre XAMPP Control Panel');
+      console.error('   2. Inicia MySQL');
+      console.error('   3. Reinicia este servidor');
+    }
+    
+    process.exit(1);
+  }
 };
 
-process.on("SIGTERM", gracefulShutdown);
-process.on("SIGINT", gracefulShutdown);
-
-process.on("uncaughtException", (error) => {
-  console.error("💥 Uncaught Exception:", error);
-  gracefulShutdown();
+// Manejo de cierre graceful
+process.on('SIGINT', () => {
+  console.log('\n🔄 Cerrando servidor...');
+  process.exit(0);
 });
 
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("💥 Unhandled Rejection:", reason);
-  gracefulShutdown();
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection:', reason);
 });
 
-module.exports = { app, server };
+startServer();

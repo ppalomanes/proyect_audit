@@ -1,7 +1,6 @@
 /**
  * Configuración de Redis para Portal de Auditorías Técnicas
- * Maneja cache, sesiones y colas de trabajos BullMQ para procesamiento asíncrono
- * Optimizado para alta concurrencia en entornos de call center
+ * CORREGIDA para manejo graceful de conexiones fallidas
  */
 
 const Redis = require('ioredis');
@@ -15,107 +14,161 @@ const {
   REDIS_CACHE_DB = 1,
   REDIS_SESSION_DB = 2,
   REDIS_QUEUE_DB = 3,
-  NODE_ENV = 'development'
+  NODE_ENV = 'development',
+  REDIS_DISABLED = 'false'
 } = process.env;
 
-// Configuración base de Redis
+// Detectar si Redis está disponible
+let redisAvailable = false;
+let connectionAttempts = 0;
+
+// Mock clients para cuando Redis no está disponible
+const createMockClient = () => ({
+  ping: () => Promise.resolve('PONG'),
+  set: () => Promise.resolve('OK'),
+  get: () => Promise.resolve(null),
+  del: () => Promise.resolve(1),
+  setex: () => Promise.resolve('OK'),
+  quit: () => Promise.resolve('OK'),
+  on: () => {},
+  info: () => Promise.resolve('redis_version:mock'),
+  status: 'mock'
+});
+
+// Si Redis está explícitamente deshabilitado
+if (REDIS_DISABLED === 'true') {
+  console.log('⚠️  Redis deshabilitado por configuración - usando mocks');
+  
+  const mockClient = createMockClient();
+
+  module.exports = {
+    redisClient: mockClient,
+    cacheClient: mockClient,
+    sessionClient: mockClient,
+    queueClient: mockClient,
+    redisAvailable: false,
+    cache: {
+      set: () => Promise.resolve(),
+      get: () => Promise.resolve(null),
+      del: () => Promise.resolve(),
+      setETLResult: () => Promise.resolve(),
+      getETLResult: () => Promise.resolve(null),
+      setIAAnalysis: () => Promise.resolve(),
+      getIAAnalysis: () => Promise.resolve(null)
+    },
+    session: {
+      store: () => Promise.resolve(),
+      get: () => Promise.resolve(null),
+      invalidate: () => Promise.resolve()
+    },
+    testConnections: () => Promise.resolve([
+      { name: 'Principal', status: 'mocked' },
+      { name: 'Cache', status: 'mocked' },
+      { name: 'Session', status: 'mocked' },
+      { name: 'Queue', status: 'mocked' }
+    ]),
+    closeConnections: () => Promise.resolve(),
+    getStats: () => Promise.resolve({ status: 'mocked' }),
+    queueConfig: {
+      connection: mockClient,
+      defaultJobOptions: {
+        removeOnComplete: 10,
+        removeOnFail: 50,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 }
+      }
+    }
+  };
+  return;
+}
+
+// Configuración base de Redis con manejo de errores mejorado
 const baseConfig = {
   host: REDIS_HOST,
   port: REDIS_PORT,
   password: REDIS_PASSWORD || undefined,
   retryDelayOnFailover: 100,
   enableReadyCheck: false,
-  maxRetriesPerRequest: 3,
+  maxRetriesPerRequest: 1,  // Reducido para fallar rápido
+  connectTimeout: 3000,     // 3 segundos timeout
+  commandTimeout: 2000,     // 2 segundos para comandos
+  lazyConnect: true,        // No conectar automáticamente
   
-  // Configuración de reconexión automática
+  // Estrategia de reintentos mejorada
   retryStrategy: (times) => {
-    const delay = Math.min(times * 50, 2000);
-    console.log(`🔄 Reintentando conexión Redis en ${delay}ms (intento ${times})`);
+    connectionAttempts = times;
+    if (times > 3) {
+      console.log(`❌ Redis: Abandoning after ${times} attempts`);
+      return null; // Stop retrying
+    }
+    const delay = Math.min(times * 200, 1000);
+    console.log(`🔄 Redis retry ${times} in ${delay}ms`);
     return delay;
   },
   
-  // Configuraciones de performance
-  lazyConnect: true,
-  keepAlive: 30000,
-  connectTimeout: 10000,
-  commandTimeout: 5000,
+  // Configuraciones adicionales para estabilidad
+  reconnectOnError: (err) => {
+    console.log('🔄 Redis reconnect on error:', err.message);
+    return err.message.includes('READONLY');
+  },
   
-  // Event handlers para debugging
   ...(NODE_ENV === 'development' && {
     showFriendlyErrorStack: true
   })
 };
 
 /**
- * Cliente Redis principal para uso general
+ * Función para crear cliente Redis con manejo de errores
  */
-const redisClient = new Redis({
-  ...baseConfig,
-  db: REDIS_DB,
-  keyPrefix: 'portal:main:'
-});
-
-/**
- * Cliente Redis para cache de datos
- * TTL por defecto optimizado para datos de auditoría
- */
-const cacheClient = new Redis({
-  ...baseConfig,
-  db: REDIS_CACHE_DB,
-  keyPrefix: 'portal:cache:'
-});
-
-/**
- * Cliente Redis para sesiones de usuario
- * Configuración específica para autenticación JWT
- */
-const sessionClient = new Redis({
-  ...baseConfig,
-  db: REDIS_SESSION_DB,
-  keyPrefix: 'portal:session:'
-});
-
-/**
- * Cliente Redis para colas BullMQ
- * Optimizado para procesamiento ETL e IA
- */
-const queueClient = new Redis({
-  ...baseConfig,
-  db: REDIS_QUEUE_DB,
-  keyPrefix: 'portal:queue:'
-});
-
-// Event listeners para monitoreo
-const setupEventListeners = (client, name) => {
+const createRedisClient = (dbNumber, name) => {
+  const client = new Redis({
+    ...baseConfig,
+    db: dbNumber
+  });
+  
+  // Flag para tracking de conexión
+  client._isConnected = false;
+  client._name = name;
+  
   client.on('connect', () => {
-    console.log(`✅ Redis ${name} conectado en ${REDIS_HOST}:${REDIS_PORT}`);
+    console.log(`✅ Redis ${name} conectado`);
+    client._isConnected = true;
+    redisAvailable = true;
   });
   
   client.on('ready', () => {
-    console.log(`🚀 Redis ${name} listo para recibir comandos`);
+    console.log(`🚀 Redis ${name} listo`);
   });
   
   client.on('error', (error) => {
-    console.error(`❌ Error Redis ${name}:`, error.message);
+    console.error(`❌ Redis ${name} error:`, error.message);
+    client._isConnected = false;
+    // No marcar redisAvailable = false aquí, puede ser temporal
   });
   
   client.on('close', () => {
-    console.log(`🔒 Conexión Redis ${name} cerrada`);
+    console.log(`🔒 Redis ${name} desconectado`);
+    client._isConnected = false;
   });
   
   client.on('reconnecting', () => {
     console.log(`🔄 Redis ${name} reconectando...`);
   });
+
+  // Agregar método isHealthy
+  client.isHealthy = () => client._isConnected && client.status === 'ready';
+  
+  return client;
 };
 
-// Configurar event listeners para todos los clientes
-setupEventListeners(redisClient, 'Principal');
-setupEventListeners(cacheClient, 'Cache');
-setupEventListeners(sessionClient, 'Session');
-setupEventListeners(queueClient, 'Queue');
+// Crear clientes Redis
+const redisClient = createRedisClient(REDIS_DB, 'Principal');
+const cacheClient = createRedisClient(REDIS_CACHE_DB, 'Cache');
+const sessionClient = createRedisClient(REDIS_SESSION_DB, 'Session');
+const queueClient = createRedisClient(REDIS_QUEUE_DB, 'Queue');
 
 /**
- * Función para probar todas las conexiones Redis
+ * Función para probar conexiones con timeout
  */
 const testConnections = async () => {
   const clients = [
@@ -129,14 +182,27 @@ const testConnections = async () => {
   
   for (const { client, name } of clients) {
     try {
-      const startTime = Date.now();
-      await client.ping();
-      const responseTime = Date.now() - startTime;
+      // Intentar conectar primero
+      if (client.status === 'wait') {
+        await client.connect();
+      }
       
-      console.log(`✅ Redis ${name} respondió en ${responseTime}ms`);
+      // Ping con timeout
+      const startTime = Date.now();
+      await Promise.race([
+        client.ping(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 2000)
+        )
+      ]);
+      
+      const responseTime = Date.now() - startTime;
+      console.log(`✅ Redis ${name} OK (${responseTime}ms)`);
       results.push({ name, status: 'connected', responseTime });
+      redisAvailable = true;
+      
     } catch (error) {
-      console.error(`❌ Redis ${name} falló:`, error.message);
+      console.log(`❌ Redis ${name} failed: ${error.message}`);
       results.push({ name, status: 'failed', error: error.message });
     }
   }
@@ -145,45 +211,52 @@ const testConnections = async () => {
 };
 
 /**
- * Utilidades de Cache con TTL inteligente
+ * Utilidades de Cache con fallback
  */
 const cache = {
-  // Cache para datos de auditoría (1 hora por defecto)
   async set(key, value, ttl = 3600) {
+    if (!cacheClient.isHealthy()) return Promise.resolve();
+    
     try {
+      const prefixedKey = `portal:cache:${key}`;
       const serializedValue = JSON.stringify(value);
-      await cacheClient.setex(key, ttl, serializedValue);
-      console.log(`💾 Cache guardado: ${key} (TTL: ${ttl}s)`);
+      await cacheClient.setex(prefixedKey, ttl, serializedValue);
+      console.log(`💾 Cache saved: ${key}`);
     } catch (error) {
-      console.error('❌ Error guardando en cache:', error.message);
+      console.warn('⚠️  Cache set failed:', error.message);
     }
   },
   
   async get(key) {
+    if (!cacheClient.isHealthy()) return null;
+    
     try {
-      const value = await cacheClient.get(key);
+      const prefixedKey = `portal:cache:${key}`;
+      const value = await cacheClient.get(prefixedKey);
       if (value) {
         console.log(`📥 Cache hit: ${key}`);
         return JSON.parse(value);
       }
-      console.log(`📭 Cache miss: ${key}`);
       return null;
     } catch (error) {
-      console.error('❌ Error leyendo cache:', error.message);
+      console.warn('⚠️  Cache get failed:', error.message);
       return null;
     }
   },
   
   async del(key) {
+    if (!cacheClient.isHealthy()) return Promise.resolve();
+    
     try {
-      await cacheClient.del(key);
-      console.log(`🗑️ Cache eliminado: ${key}`);
+      const prefixedKey = `portal:cache:${key}`;
+      await cacheClient.del(prefixedKey);
+      console.log(`🗑️ Cache deleted: ${key}`);
     } catch (error) {
-      console.error('❌ Error eliminando cache:', error.message);
+      console.warn('⚠️  Cache delete failed:', error.message);
     }
   },
   
-  // Cache específico para resultados ETL (6 horas)
+  // Métodos específicos
   async setETLResult(jobId, result) {
     return this.set(`etl:result:${jobId}`, result, 21600);
   },
@@ -192,7 +265,6 @@ const cache = {
     return this.get(`etl:result:${jobId}`);
   },
   
-  // Cache para análisis IA (12 horas)
   async setIAAnalysis(documentId, analysis) {
     return this.set(`ia:analysis:${documentId}`, analysis, 43200);
   },
@@ -203,41 +275,49 @@ const cache = {
 };
 
 /**
- * Utilidades de Sesión para JWT
+ * Utilidades de Sesión con fallback
  */
 const session = {
-  async store(userId, sessionData, ttl = 86400) { // 24 horas por defecto
+  async store(userId, sessionData, ttl = 86400) {
+    if (!sessionClient.isHealthy()) return Promise.resolve();
+    
     try {
-      const key = `user:${userId}`;
+      const key = `portal:session:user:${userId}`;
       await sessionClient.setex(key, ttl, JSON.stringify(sessionData));
-      console.log(`🔐 Sesión almacenada para usuario ${userId}`);
+      console.log(`🔐 Session stored: ${userId}`);
     } catch (error) {
-      console.error('❌ Error almacenando sesión:', error.message);
+      console.warn('⚠️  Session store failed:', error.message);
     }
   },
   
   async get(userId) {
+    if (!sessionClient.isHealthy()) return null;
+    
     try {
-      const sessionData = await sessionClient.get(`user:${userId}`);
+      const key = `portal:session:user:${userId}`;
+      const sessionData = await sessionClient.get(key);
       return sessionData ? JSON.parse(sessionData) : null;
     } catch (error) {
-      console.error('❌ Error leyendo sesión:', error.message);
+      console.warn('⚠️  Session get failed:', error.message);
       return null;
     }
   },
   
   async invalidate(userId) {
+    if (!sessionClient.isHealthy()) return Promise.resolve();
+    
     try {
-      await sessionClient.del(`user:${userId}`);
-      console.log(`🔒 Sesión invalidada para usuario ${userId}`);
+      const key = `portal:session:user:${userId}`;
+      await sessionClient.del(key);
+      console.log(`🔒 Session invalidated: ${userId}`);
     } catch (error) {
-      console.error('❌ Error invalidando sesión:', error.message);
+      console.warn('⚠️  Session invalidate failed:', error.message);
     }
   }
 };
 
 /**
- * Función para cerrar todas las conexiones Redis
+ * Función para cerrar conexiones gracefully
  */
 const closeConnections = async () => {
   const clients = [redisClient, cacheClient, sessionClient, queueClient];
@@ -245,19 +325,25 @@ const closeConnections = async () => {
   await Promise.all(
     clients.map(async (client, index) => {
       try {
-        await client.quit();
-        console.log(`🔒 Cliente Redis ${index + 1} cerrado correctamente`);
+        if (client.status !== 'end') {
+          await client.quit();
+        }
+        console.log(`🔒 Redis client ${index + 1} closed`);
       } catch (error) {
-        console.error(`❌ Error cerrando cliente Redis ${index + 1}:`, error.message);
+        console.warn(`⚠️  Error closing Redis client ${index + 1}:`, error.message);
       }
     })
   );
 };
 
 /**
- * Función para obtener estadísticas de Redis
+ * Función para estadísticas con fallback
  */
 const getStats = async () => {
+  if (!redisClient.isHealthy()) {
+    return { status: 'unavailable' };
+  }
+  
   try {
     const info = await redisClient.info();
     const stats = {};
@@ -273,24 +359,26 @@ const getStats = async () => {
       connected_clients: stats.connected_clients,
       used_memory_human: stats.used_memory_human,
       total_commands_processed: stats.total_commands_processed,
-      keyspace_hits: stats.keyspace_hits,
-      keyspace_misses: stats.keyspace_misses,
-      uptime_in_seconds: stats.uptime_in_seconds
+      uptime_in_seconds: stats.uptime_in_seconds,
+      status: 'healthy'
     };
   } catch (error) {
-    console.error('❌ Error obteniendo estadísticas Redis:', error.message);
-    return {};
+    console.warn('⚠️  Error getting Redis stats:', error.message);
+    return { status: 'error', error: error.message };
   }
 };
 
 module.exports = {
-  // Clientes Redis especializados
+  // Clientes Redis
   redisClient,
   cacheClient,
   sessionClient,
   queueClient,
   
-  // Utilidades de alto nivel
+  // Flag de disponibilidad
+  redisAvailable,
+  
+  // Utilidades
   cache,
   session,
   
@@ -302,10 +390,11 @@ module.exports = {
   // Configuración para BullMQ
   queueConfig: {
     connection: queueClient,
+    prefix: 'portal:queue:',
     defaultJobOptions: {
-      removeOnComplete: 10,   // Mantener solo 10 jobs completados
-      removeOnFail: 50,       // Mantener 50 jobs fallidos para análisis
-      attempts: 3,            // 3 intentos por defecto
+      removeOnComplete: 10,
+      removeOnFail: 50,
+      attempts: 3,
       backoff: {
         type: 'exponential',
         delay: 2000

@@ -110,3 +110,55 @@ docs/generated/
 # Local development
 .local/
 .dev/
+BACKEND_LOGIN_CORRECTED.bat
+BACKEND_LOGIN_FIX.bat
+CHAT_LAYOUT_INTEGRATION_COMPLETE.bat
+CHAT_LAYOUT_INTEGRATION_TEST.bat
+CLEAN_CORRUPTED_STORAGE.bat
+DIAGNOSE_LOGIN_ERROR.bat
+FINAL_CHAT_INTEGRATION_TEST.bat
+FIX_SERVER_DEPENDENCIES.bat
+FIX_SIDEBAR_ERROR.bat
+fix-dark-theme-final.bat
+LOGIN_FIX_TEST.bat
+SOLUCION-TEMA-OSCURO.bat
+START_COMPLETE_ETL.bat
+START_ETL_FUNCTIONAL.bat
+start-etl-portal.bat
+STOP_INFINITE_LOOP.bat
+STORAGE_CORRUPTION_FIX.bat
+test-chat-themes-fixed.bat
+test-etl-api.bat
+client/FIX_CHAT_DEPENDENCIES.bat
+server/INSTALL-AND-START.bat
+server/START_COMPLETE_CHAT_SYSTEM.bat
+server/TEST_CHAT_SYSTEM.bat
+ 
+# === DEVELOPMENT TOOLS === 
+dev-tools/ 
+dev-docs/ 
+ 
+# === LOG FILES === 
+*.log 
+logs/ 
+ 
+# === TEMPORARY FILES === 
+*.tmp 
+*.temp 
+.DS_Store 
+Thumbs.db 
+ 
+# === TESTING FILES === 
+test-*.js 
+debug-*.js 
+
+# === CLEANUP DIRECTORIES ===
+# Massive cleanup results - orphaned files moved here
+CLEANUP_MASSIVE/
+CLEANUP_TEMP/
+EMERGENCY_BACKUP/
+
+# Cleanup scripts and analysis
+analyze-orphans.js
+cleanup-*.js
+workspace-cleanup.js

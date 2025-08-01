@@ -1,109 +1,457 @@
+// ETL Store - Zustand
+// Portal de Auditorías Técnicas
+
 import { create } from 'zustand';
-import { api } from '../auth/authStore';
+import etlService from './services/etlService';
 
 const useETLStore = create((set, get) => ({
-  // Estado
-  processing: false,
-  uploadProgress: 0,
-  processResult: null,
-  statistics: null,
-  configuration: null,
-  error: null,
+  // Estado del upload y procesamiento
+  uploadState: {
+    isUploading: false,
+    uploadProgress: 0,
+    file: null,
+    validationResults: null
+  },
 
-  // Acciones
-  uploadAndProcess: async (file, auditoriaId, options = {}) => {
+  // Trabajos ETL
+  jobs: [],
+  currentJob: null,
+  jobPollingInterval: null,
+
+  // Datos procesados
+  parqueInformatico: {
+    data: [],
+    total: 0,
+    loading: false,
+    filters: {
+      estado: 'VALIDADO',
+      nivel_cumplimiento: null,
+      limit: 50,
+      offset: 0
+    }
+  },
+
+  // Métricas
+  metrics: {
+    data: null,
+    loading: false
+  },
+
+  // Reglas de validación
+  validationRules: {
+    data: [],
+    loading: false
+  },
+
+  // === ACCIONES DE UPLOAD ===
+  
+  setUploadFile: (file) => set((state) => ({
+    uploadState: {
+      ...state.uploadState,
+      file,
+      validationResults: null
+    }
+  })),
+
+  setUploadProgress: (progress) => set((state) => ({
+    uploadState: {
+      ...state.uploadState,
+      uploadProgress: progress
+    }
+  })),
+
+  setUploadState: (isUploading) => set((state) => ({
+    uploadState: {
+      ...state.uploadState,
+      isUploading
+    }
+  })),
+
+  // Validar archivo sin procesarlo
+  validateFile: async (file, auditoriaId) => {
+    const state = get();
+    
     try {
-      console.log('🔄 Iniciando upload ETL:', file.name, file.size);
-      set({ processing: true, error: null, processResult: null });
+      set((state) => ({
+        uploadState: {
+          ...state.uploadState,
+          isUploading: true,
+          uploadProgress: 0
+        }
+      }));
 
-      // Crear FormData para enviar el archivo
-      const formData = new FormData();
-      formData.append('archivo', file);
-      formData.append('auditoria_id', auditoriaId);
-      formData.append('strict_mode', options.strict_mode || false);
-      formData.append('auto_fix', options.auto_fix || true);
-      
-      if (options.skip_validation && options.skip_validation.length > 0) {
-        formData.append('skip_validation', JSON.stringify(options.skip_validation));
-      }
-
-      console.log('📋 Datos a enviar:');
-      console.log('- Archivo:', file.name, file.type, file.size);
-      console.log('- Auditoría ID:', auditoriaId);
-      console.log('- Opciones:', options);
-
-      // Enviar con FormData (no JSON)
-      const response = await api.post('/etl/procesar', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        timeout: 120000, // 2 minutos timeout para archivos grandes
-        onUploadProgress: (progressEvent) => {
-          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          set({ uploadProgress: progress });
-          console.log(`📤 Upload progress: ${progress}%`);
+      const results = await etlService.validateFile(file, {
+        onProgress: (progress) => {
+          set((state) => ({
+            uploadState: {
+              ...state.uploadState,
+              uploadProgress: progress
+            }
+          }));
         }
       });
 
-      console.log('✅ Respuesta del servidor:', response.data);
+      set((state) => ({
+        uploadState: {
+          ...state.uploadState,
+          isUploading: false,
+          validationResults: results,
+          uploadProgress: 100
+        }
+      }));
 
-      set({
-        processing: false,
-        processResult: response.data.data,
-        error: null,
-        uploadProgress: 0
+      return results;
+
+    } catch (error) {
+      set((state) => ({
+        uploadState: {
+          ...state.uploadState,
+          isUploading: false,
+          uploadProgress: 0
+        }
+      }));
+      
+      throw error;
+    }
+  },
+
+  // Procesar archivo
+  processFile: async (file, auditoriaId, configuracion = {}) => {
+    try {
+      set((state) => ({
+        uploadState: {
+          ...state.uploadState,
+          isUploading: true,
+          uploadProgress: 0
+        }
+      }));
+
+      const result = await etlService.processFile(file, auditoriaId, configuracion, {
+        onProgress: (progress) => {
+          set((state) => ({
+            uploadState: {
+              ...state.uploadState,
+              uploadProgress: progress
+            }
+          }));
+        }
       });
 
-      return { success: true, data: response.data.data };
+      // Iniciar seguimiento del job
+      get().startJobPolling(result.data.job_id);
+
+      set((state) => ({
+        uploadState: {
+          ...state.uploadState,
+          isUploading: false,
+          uploadProgress: 100
+        },
+        currentJob: {
+          job_id: result.data.job_id,
+          estado: result.data.estado,
+          estimacion_tiempo: result.data.estimacion_tiempo
+        }
+      }));
+
+      return result;
+
     } catch (error) {
-      console.error('❌ Error en upload ETL:', error);
+      set((state) => ({
+        uploadState: {
+          ...state.uploadState,
+          isUploading: false,
+          uploadProgress: 0
+        }
+      }));
       
-      let errorMessage = 'Error procesando archivo';
+      throw error;
+    }
+  },
+
+  // === ACCIONES DE JOBS ===
+  
+  // Obtener lista de jobs
+  fetchJobs: async (filters = {}) => {
+    try {
+      const response = await etlService.getJobs(filters);
       
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.message) {
-        errorMessage = error.message;
+      set({
+        jobs: response.data.jobs
+      });
+
+      return response.data;
+
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+      throw error;
+    }
+  },
+
+  // Obtener estado de job específico
+  fetchJobStatus: async (jobId) => {
+    try {
+      const response = await etlService.getJobStatus(jobId);
+      
+      // Actualizar job actual si es el mismo
+      const state = get();
+      if (state.currentJob?.job_id === jobId) {
+        set({
+          currentJob: response.data
+        });
       }
 
-      set({
-        processing: false,
-        error: errorMessage,
-        uploadProgress: 0
-      });
+      // Actualizar en la lista de jobs
+      set((state) => ({
+        jobs: state.jobs.map(job => 
+          job.id === jobId ? { ...job, ...response.data } : job
+        )
+      }));
+
+      return response.data;
+
+    } catch (error) {
+      console.error('Error fetching job status:', error);
+      throw error;
+    }
+  },
+
+  // Obtener resultados de job
+  fetchJobResults: async (jobId) => {
+    try {
+      const response = await etlService.getJobResults(jobId);
+      return response.data;
+
+    } catch (error) {
+      console.error('Error fetching job results:', error);
+      throw error;
+    }
+  },
+
+  // Iniciar polling de job
+  startJobPolling: (jobId) => {
+    const state = get();
+    
+    // Limpiar polling anterior si existe
+    if (state.jobPollingInterval) {
+      clearInterval(state.jobPollingInterval);
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const jobStatus = await get().fetchJobStatus(jobId);
+        
+        // Detener polling si el job terminó
+        if (['COMPLETADO', 'ERROR', 'CANCELADO'].includes(jobStatus.estado)) {
+          get().stopJobPolling();
+          
+          // Si completado exitosamente, recargar datos
+          if (jobStatus.estado === 'COMPLETADO') {
+            // Recargar parque informático si estamos viendo esa auditoría
+            const currentFilters = get().parqueInformatico.filters;
+            if (currentFilters.auditoria_id) {
+              get().fetchParqueInformatico(currentFilters.auditoria_id);
+            }
+          }
+        }
+
+      } catch (error) {
+        console.error('Error polling job status:', error);
+        get().stopJobPolling();
+      }
+    }, 2000); // Poll cada 2 segundos
+
+    set({ jobPollingInterval: interval });
+  },
+
+  // Detener polling de job
+  stopJobPolling: () => {
+    const state = get();
+    if (state.jobPollingInterval) {
+      clearInterval(state.jobPollingInterval);
+      set({ jobPollingInterval: null });
+    }
+  },
+
+  // === ACCIONES DE DATOS PROCESADOS ===
+  
+  // Obtener datos de parque informático
+  fetchParqueInformatico: async (auditoriaId, filters = {}) => {
+    try {
+      set((state) => ({
+        parqueInformatico: {
+          ...state.parqueInformatico,
+          loading: true,
+          filters: { ...state.parqueInformatico.filters, ...filters, auditoria_id: auditoriaId }
+        }
+      }));
+
+      const response = await etlService.getParqueInformatico(auditoriaId, filters);
       
-      return { success: false, error: errorMessage };
-    }
-  },
+      set((state) => ({
+        parqueInformatico: {
+          ...state.parqueInformatico,
+          data: response.data.registros,
+          total: response.data.total,
+          loading: false
+        }
+      }));
 
-  getStatistics: async (auditoriaId) => {
-    try {
-      console.log('📊 Obteniendo estadísticas para:', auditoriaId);
-      const response = await api.get(`/etl/estadisticas/${auditoriaId}`);
-      set({ statistics: response.data.data });
-      return response.data.data;
+      return response.data;
+
     } catch (error) {
-      console.error('Error obteniendo estadísticas:', error);
-      return null;
+      set((state) => ({
+        parqueInformatico: {
+          ...state.parqueInformatico,
+          loading: false
+        }
+      }));
+      
+      console.error('Error fetching parque informático:', error);
+      throw error;
     }
   },
 
-  getConfiguration: async () => {
+  // Actualizar filtros de parque informático
+  updateParqueFilters: (filters) => {
+    set((state) => ({
+      parqueInformatico: {
+        ...state.parqueInformatico,
+        filters: { ...state.parqueInformatico.filters, ...filters }
+      }
+    }));
+
+    // Recargar datos si tenemos auditoría
+    const state = get();
+    if (state.parqueInformatico.filters.auditoria_id) {
+      state.fetchParqueInformatico(
+        state.parqueInformatico.filters.auditoria_id,
+        state.parqueInformatico.filters
+      );
+    }
+  },
+
+  // === ACCIONES DE MÉTRICAS ===
+  
+  fetchMetrics: async (auditoriaId = null) => {
     try {
-      console.log('⚙️ Obteniendo configuración ETL');
-      const response = await api.get('/etl/configuracion');
-      set({ configuration: response.data.data });
-      return response.data.data;
+      set((state) => ({
+        metrics: {
+          ...state.metrics,
+          loading: true
+        }
+      }));
+
+      const response = await etlService.getMetrics(auditoriaId);
+      
+      set({
+        metrics: {
+          data: response.data,
+          loading: false
+        }
+      });
+
+      return response.data;
+
     } catch (error) {
-      console.error('Error obteniendo configuración:', error);
-      return null;
+      set((state) => ({
+        metrics: {
+          ...state.metrics,
+          loading: false
+        }
+      }));
+      
+      console.error('Error fetching metrics:', error);
+      throw error;
     }
   },
 
-  clearError: () => set({ error: null }),
-  clearResults: () => set({ processResult: null, statistics: null })
+  // === ACCIONES DE REGLAS ===
+  
+  fetchValidationRules: async (categoria = null) => {
+    try {
+      set((state) => ({
+        validationRules: {
+          ...state.validationRules,
+          loading: true
+        }
+      }));
+
+      const response = await etlService.getValidationRules(categoria);
+      
+      set({
+        validationRules: {
+          data: response.data,
+          loading: false
+        }
+      });
+
+      return response.data;
+
+    } catch (error) {
+      set((state) => ({
+        validationRules: {
+          ...state.validationRules,
+          loading: false
+        }
+      }));
+      
+      console.error('Error fetching validation rules:', error);
+      throw error;
+    }
+  },
+
+  // === UTILIDADES ===
+  
+  // Limpiar estado de upload
+  clearUploadState: () => set({
+    uploadState: {
+      isUploading: false,
+      uploadProgress: 0,
+      file: null,
+      validationResults: null
+    }
+  }),
+
+  // Limpiar job actual
+  clearCurrentJob: () => {
+    get().stopJobPolling();
+    set({ currentJob: null });
+  },
+
+  // Reset completo del store
+  reset: () => {
+    get().stopJobPolling();
+    set({
+      uploadState: {
+        isUploading: false,
+        uploadProgress: 0,
+        file: null,
+        validationResults: null
+      },
+      jobs: [],
+      currentJob: null,
+      jobPollingInterval: null,
+      parqueInformatico: {
+        data: [],
+        total: 0,
+        loading: false,
+        filters: {
+          estado: 'VALIDADO',
+          nivel_cumplimiento: null,
+          limit: 50,
+          offset: 0
+        }
+      },
+      metrics: {
+        data: null,
+        loading: false
+      },
+      validationRules: {
+        data: [],
+        loading: false
+      }
+    });
+  }
 }));
 
-export { useETLStore };
+export default useETLStore;

@@ -2,11 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import AppRouter from './router/AppRouter';
 import { ThemeProvider } from './contexts/ThemeContext';
-import './index.css';
-import './clickup-sidebar.css';
-import './dark-theme-patch.css';
-import './force-dark-theme.css';
-import './nuclear-dark-theme.css';
+
+// CSS en orden específico - CRUCIAL para el funcionamiento
+import './index.css';  // DEBE ser el primero: Tailwind + estilos personalizados
 
 // 🧹 Limpieza automática de storage corrupto en desarrollo (DESHABILITADA TEMPORALMENTE)
 // if (import.meta.env.DEV) {

@@ -6,8 +6,25 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
+    "start:complete": "node server.js",
+    "start:production": "NODE_ENV=production node server.js",
+    "chat": "node server-chat-real.js",
+    "chat:integrated": "node server-chat-real-integrated.js",
+    "etl:integrated": "node server-chat-auth-etl-integrated.js",
+    "etl:fixed": "node server-etl-fixed.js",
+    "etl:test": "node test-etl-integration.js",
+    "chat:dev": "nodemon server-chat-real.js",
+    "chat:diagnose": "node ../scripts/diagnose-chat.js",
+    "generate:token": "node scripts/generate-test-token.js",
     "test": "jest",
+    "test:integration": "jest tests/integration/ --detectOpenHandles --forceExit",
+    "test:controladores": "jest tests/integration/controladores-implementados.test.js",
+    "test:sistema-completo": "jest tests/integration/sistema-completo.test.js",
     "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "verify:system": "node final-system-check.js",
+    "verify:quick": "node final-system-check.js --quick",
+    "health:check": "curl http://localhost:3002/api/health",
     "claude:generate": "node ../scripts/claude-md-generator.js",
     "claude:validate": "node ../scripts/claude-md-validator.js",
     "claude:rebuild": "npm run claude:generate:all && npm run claude:validate",
@@ -29,7 +46,7 @@
   "author": "Portal Auditorías Team",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.10.0",
+    "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "bullmq": "^4.15.0",
@@ -37,7 +54,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "exceljs": "^4.4.0",
-    "express": "^4.18.2",
+    "express": "^4.21.2",
     "express-rate-limit": "^7.1.5",
     "express-validator": "^7.2.1",
     "helmet": "^7.1.0",
@@ -47,7 +64,7 @@
     "moment": "^2.29.4",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
-    "mysql2": "^3.6.5",
+    "mysql2": "^3.14.2",
     "papaparse": "^5.4.1",
     "pdf-parse": "^1.1.1",
     "sequelize": "^6.35.1",
@@ -64,6 +81,33 @@
     "nodemon": "^3.0.2",
     "sequelize-cli": "^6.6.2",
     "supertest": "^6.3.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.js"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js",
+      "**/tests/**/*.spec.js"
+    ],
+    "collectCoverageFrom": [
+      "domains/**/*.js",
+      "config/**/*.js",
+      "shared/**/*.js",
+      "!**/node_modules/**",
+      "!**/tests/**"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ],
+    "verbose": true,
+    "detectOpenHandles": true,
+    "forceExit": true,
+    "testTimeout": 30000
   },
   "engines": {
     "node": ">=18.0.0",

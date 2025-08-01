@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../authStore';
+import useAuthStore from '../authStore';
 
 const ProtectedRoute = ({ 
   children, 
