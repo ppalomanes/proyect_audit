@@ -1,18 +1,7 @@
-// authStore.js - Store de autenticación corregido
+// authStore.js - Store de autenticación corregido usando authService unificado
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-
-// Configuración API - Puerto corregido a 5000
-const API_BASE_URL = 'http://localhost:5000';
-
-const apiRequest = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`;
-  console.log(`API Request: ${options.method || 'GET'} ${url}`);
-  return fetch(url, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', ...options.headers }
-  });
-};
+import authService from './services/authService';
 
 // Store de autenticación con Zustand
 const useAuthStore = create(
@@ -34,44 +23,31 @@ const useAuthStore = create(
         set({ isLoading: true, error: null });
         
         try {
-          const response = await apiRequest('/api/auth/login', {
-            method: 'POST',
-            body: JSON.stringify({ email, password })
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Error de autenticación');
-          }
-
-          const data = await response.json();
+          const result = await authService.login(email, password);
           
-          if (data.status === 'success' && data.data) {
-            const { user, accessToken } = data.data;
-            
+          if (result.success) {
             set({
-              user: user,
-              token: accessToken,
+              user: result.user,
+              token: result.token,
               isAuthenticated: true,
               isLoading: false,
               error: null
             });
             
-            // Guardar token en localStorage
-            localStorage.setItem('auth_token', accessToken);
-            
-            console.log('✅ Login exitoso:', user);
-            return { success: true, user: user };
+            console.log('✅ Login exitoso en store:', result.user);
+            return { success: true, user: result.user };
           } else {
-            throw new Error(data.message || 'Credenciales inválidas');
+            throw new Error(result.error || 'Error de autenticación');
           }
           
         } catch (error) {
-          console.error('❌ Error en login:', error);
+          console.error('❌ Error en login store:', error);
           set({
             isLoading: false,
             error: error.message,
-            isAuthenticated: false
+            isAuthenticated: false,
+            user: null,
+            token: null
           });
           return { success: false, error: error.message };
         }
@@ -80,55 +56,118 @@ const useAuthStore = create(
       /**
        * Cerrar sesión
        */
-      logout: () => {
-        localStorage.removeItem('auth_token');
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          error: null
-        });
-        console.log('👋 Sesión cerrada');
+      logout: async () => {
+        set({ isLoading: true });
+        
+        try {
+          await authService.logout();
+        } catch (error) {
+          console.warn('Error en logout:', error);
+        } finally {
+          // Siempre limpiar el estado local
+          set({
+            user: null,
+            token: null,
+            isAuthenticated: false,
+            error: null,
+            isLoading: false
+          });
+          
+          console.log('👋 Sesión cerrada en store');
+        }
       },
 
       /**
        * Verificar estado de autenticación
        */
       checkAuth: async () => {
-        const token = localStorage.getItem('auth_token');
-        if (!token) {
+        set({ isLoading: true });
+        
+        try {
+          // Primero verificar si hay datos en localStorage
+          const storedUser = authService.getStoredUser();
+          const storedToken = authService.getStoredToken();
+          
+          if (!storedToken || !storedUser) {
+            set({
+              user: null,
+              token: null,
+              isAuthenticated: false,
+              isLoading: false
+            });
+            return false;
+          }
+          
+          // Verificar token con el servidor
+          const result = await authService.verifyToken();
+          
+          if (result.success) {
+            set({
+              user: result.user,
+              token: storedToken,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null
+            });
+            
+            console.log('✅ Auth verificado:', result.user.email);
+            return true;
+          } else {
+            // Token inválido, limpiar estado
+            set({
+              user: null,
+              token: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: null
+            });
+            return false;
+          }
+          
+        } catch (error) {
+          console.error('❌ Error verificando auth:', error);
+          set({
+            user: null,
+            token: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: null
+          });
           return false;
         }
+      },
 
+      /**
+       * Inicializar store desde localStorage
+       */
+      initializeAuth: () => {
         try {
-          const response = await apiRequest('/api/auth/verify', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-              set({
-                user: data.user,
-                token: token,
-                isAuthenticated: true
-              });
-              return true;
-            }
+          const storedUser = authService.getStoredUser();
+          const storedToken = authService.getStoredToken();
+          
+          if (storedUser && storedToken) {
+            set({
+              user: storedUser,
+              token: storedToken,
+              isAuthenticated: true,
+              error: null
+            });
+            
+            console.log('🔄 Auth inicializado desde localStorage:', storedUser.email);
+            return true;
           }
+          
+          return false;
         } catch (error) {
-          console.warn('Error verificando autenticación:', error);
+          console.error('Error inicializando auth:', error);
+          set({
+            user: null,
+            token: null,
+            isAuthenticated: false,
+            error: null
+          });
+          return false;
         }
-
-        // Si la verificación falla, limpiar datos
-        localStorage.removeItem('auth_token');
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false
-        });
-        return false;
       },
 
       /**
@@ -144,6 +183,15 @@ const useAuthStore = create(
        */
       clearError: () => {
         set({ error: null });
+      },
+
+      /**
+       * Actualizar datos del usuario en el store
+       */
+      updateUser: (userData) => {
+        set(state => ({
+          user: { ...state.user, ...userData }
+        }));
       }
     }),
     {

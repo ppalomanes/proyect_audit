@@ -1,0 +1,116 @@
+/* ===== OVERRIDE DEFINITIVO DEL HEADER ===== */
+/* Este archivo debe importarse al final para asegurar máxima prioridad */
+
+/* Variables específicas del header para cada tema */
+:root,
+[data-theme="light"] {
+  --header-bg-color: 255, 255, 255;
+  --header-shadow: none;
+}
+
+[data-theme="dark"] {
+  --header-bg-color: 15, 23, 42;
+  --header-shadow: none;
+}
+
+[data-theme="corporate"] {
+  --header-bg-color: 248, 250, 252;
+  --header-shadow: none;
+}
+
+/* Override absoluto del header */
+.header-solid,
+header {
+  /* Posicionamiento */
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 999 !important;
+  
+  /* Fondo sólido sin transparencia */
+  background: rgb(var(--header-bg-color)) !important;
+  background-color: rgb(var(--header-bg-color)) !important;
+  opacity: 1 !important;
+  
+  /* Sin efectos de transparencia */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  
+  /* Sin bordes ni líneas */
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: none !important;
+  border-right: none !important;
+  border-bottom: 0 !important;
+  border-left: none !important;
+  outline: none !important;
+  
+  /* Sin sombras ni líneas sutiles */
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  
+  /* Transición suave para cambios de tema */
+  transition: background-color 200ms ease-in-out !important;
+}
+
+/* Asegurar que no haya pseudo-elementos con líneas */
+.header-solid::before,
+.header-solid::after,
+header::before,
+header::after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: none !important;
+}
+
+/* El contenedor dentro del header también sin bordes */
+.header-solid > *,
+header > * {
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+
+/* Eliminar cualquier línea horizontal que pueda venir de otros componentes */
+.header-solid + *,
+header + * {
+  border-top: none !important;
+  margin-top: 0 !important;
+}
+
+/* Override para cualquier clase que pueda añadir bordes */
+.header-solid.border-b,
+header.border-b,
+.header-solid.border-bottom,
+header.border-bottom {
+  border-bottom: 0 !important;
+}
+
+/* Forzar visualización correcta en todos los navegadores */
+@supports (-webkit-appearance: none) {
+  .header-solid,
+  header {
+    -webkit-appearance: none !important;
+    border-bottom: 0 !important;
+  }
+}
+
+/* Fix para Firefox */
+@-moz-document url-prefix() {
+  .header-solid,
+  header {
+    border-bottom: 0 !important;
+  }
+}
+
+/* Fix para Edge */
+@supports (-ms-ime-align: auto) {
+  .header-solid,
+  header {
+    border-bottom: 0 !important;
+  }
+}

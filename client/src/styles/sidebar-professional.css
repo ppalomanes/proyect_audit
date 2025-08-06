@@ -1,0 +1,303 @@
+/* ===== SISTEMA DE TEMAS REFINADO - HEADER SÓLIDO ===== */
+
+/* ===== TEMA LIGHT (Base) ===== */
+:root,
+[data-theme="light"] {
+  /* Header background - SÓLIDO SIN TRANSPARENCIA */
+  --header-bg: rgb(255, 255, 255);
+  
+  /* Sidebar colors */
+  --color-sidebar-bg: 255 255 255;
+  --color-sidebar-text: 15 23 42;
+  --color-sidebar-border: 226 232 240;
+  --color-sidebar-hover: 241 245 249;
+  --color-sidebar-active: 59 130 246;
+  --color-sidebar-inactive: 71 85 105;
+  
+  /* Main content colors */
+  --color-bg-primary: 255 255 255;
+  --color-bg-secondary: 248 250 252;
+  --color-bg-tertiary: 241 245 249;
+  --color-bg-accent: 226 232 240;
+  --color-bg-card: 255 255 255;
+  --color-bg-card-hover: 248 250 252;
+  
+  /* Text colors */
+  --color-text-primary: 15 23 42;
+  --color-text-secondary: 51 65 85;
+  --color-text-muted: 71 85 105;
+  --color-text-accent: 30 58 138;
+  --color-text-inverted: 255 255 255;
+  
+  /* Border colors - MUY SUTILES */
+  --color-border-primary: 226 232 240;
+  --color-border-secondary: 203 213 225;
+  --color-border-accent: 186 199 218;
+  
+  /* Interactive colors */
+  --color-hover: 241 245 249;
+  --color-active: 226 232 240;
+  --color-focus: 59 130 246;
+  
+  /* Gradient colors */
+  --color-gradient-start: 255 255 255;
+  --color-gradient-end: 248 250 252;
+}
+
+/* ===== TEMA DARK - CONTORNOS DISCRETOS ===== */
+[data-theme="dark"] {
+  /* Header background - SÓLIDO SIN TRANSPARENCIA */
+  --header-bg: rgb(15, 23, 42);
+  
+  /* Sidebar colors */
+  --color-sidebar-bg: 15 23 42;
+  --color-sidebar-text: 248 250 252;
+  --color-sidebar-border: 30 41 59;
+  --color-sidebar-hover: 30 41 59;
+  --color-sidebar-active: 99 102 241;
+  --color-sidebar-inactive: 148 163 184;
+  
+  /* Main content colors */
+  --color-bg-primary: 15 23 42;
+  --color-bg-secondary: 30 41 59;
+  --color-bg-tertiary: 51 65 85;
+  --color-bg-accent: 71 85 105;
+  --color-bg-card: 30 41 59;
+  --color-bg-card-hover: 51 65 85;
+  
+  /* Text colors */
+  --color-text-primary: 248 250 252;
+  --color-text-secondary: 226 232 240;
+  --color-text-muted: 148 163 184;
+  --color-text-accent: 186 199 218;
+  --color-text-inverted: 15 23 42;
+  
+  /* Border colors - MUY DISCRETOS */
+  --color-border-primary: 30 41 59;
+  --color-border-secondary: 51 65 85;
+  --color-border-accent: 71 85 105;
+  
+  /* Interactive colors */
+  --color-hover: 51 65 85;
+  --color-active: 71 85 105;
+  --color-focus: 99 102 241;
+  
+  /* Gradient colors */
+  --color-gradient-start: 30 41 59;
+  --color-gradient-end: 15 23 42;
+}
+
+/* ===== TEMA CORPORATE - SUTILEZA PROFESIONAL ===== */
+[data-theme="corporate"] {
+  /* Header background - SÓLIDO SIN TRANSPARENCIA */
+  --header-bg: rgb(248, 250, 252);
+  
+  /* Sidebar colors */
+  --color-sidebar-bg: 248 250 252;
+  --color-sidebar-text: 30 58 138;
+  --color-sidebar-border: 219 234 254;
+  --color-sidebar-hover: 239 246 255;
+  --color-sidebar-active: 29 78 216;
+  --color-sidebar-inactive: 100 116 139;
+  
+  /* Main content colors */
+  --color-bg-primary: 248 250 252;
+  --color-bg-secondary: 239 246 255;
+  --color-bg-tertiary: 219 234 254;
+  --color-bg-accent: 191 219 254;
+  --color-bg-card: 255 255 255;
+  --color-bg-card-hover: 239 246 255;
+  
+  /* Text colors */
+  --color-text-primary: 30 58 138;
+  --color-text-secondary: 29 78 216;
+  --color-text-muted: 100 116 139;
+  --color-text-accent: 37 99 235;
+  --color-text-inverted: 255 255 255;
+  
+  /* Border colors - CORPORATIVO SUTIL */
+  --color-border-primary: 219 234 254;
+  --color-border-secondary: 191 219 254;
+  --color-border-accent: 147 197 253;
+  
+  /* Interactive colors */
+  --color-hover: 239 246 255;
+  --color-active: 219 234 254;
+  --color-focus: 29 78 216;
+  
+  /* Gradient colors */
+  --color-gradient-start: 255 255 255;
+  --color-gradient-end: 239 246 255;
+}
+
+/* ===== COLORES SEMÁNTICOS ===== */
+:root {
+  /* Status colors */
+  --color-success: 34 197 94;
+  --color-warning: 245 158 11;
+  --color-error: 239 68 68;
+  --color-info: 59 130 246;
+  
+  /* Brand colors */
+  --color-brand-primary: 99 102 241;
+  --color-brand-secondary: 139 92 246;
+}
+
+/* ===== CLASES UTILITARIAS REFINADAS ===== */
+.bg-primary { background-color: rgb(var(--color-bg-primary)); }
+.bg-secondary { background-color: rgb(var(--color-bg-secondary)); }
+.bg-tertiary { background-color: rgb(var(--color-bg-tertiary)); }
+.bg-accent { background-color: rgb(var(--color-bg-accent)); }
+.bg-card { background-color: rgb(var(--color-bg-card)); }
+.bg-card-hover { background-color: rgb(var(--color-bg-card-hover)); }
+
+.text-primary { color: rgb(var(--color-text-primary)); }
+.text-secondary { color: rgb(var(--color-text-secondary)); }
+.text-muted { color: rgb(var(--color-text-muted)); }
+.text-accent { color: rgb(var(--color-text-accent)); }
+.text-inverted { color: rgb(var(--color-text-inverted)); }
+
+/* Borders SUTILES */
+.border-primary { border-color: rgb(var(--color-border-primary)); }
+.border-secondary { border-color: rgb(var(--color-border-secondary)); }
+.border-accent { border-color: rgb(var(--color-border-accent)); }
+
+/* Hover states */
+.hover-bg-card:hover { background-color: rgb(var(--color-bg-card-hover)); }
+.hover-bg-hover:hover { background-color: rgb(var(--color-hover)); }
+
+/* ===== SIDEBAR ESPECÍFICO ===== */
+.bg-sidebar-primary { background-color: rgb(var(--color-sidebar-bg)); }
+.bg-sidebar-hover { background-color: rgb(var(--color-sidebar-hover)); }
+.bg-sidebar-active { background-color: rgb(var(--color-sidebar-active)); }
+
+.text-sidebar-primary { color: rgb(var(--color-sidebar-text)); }
+.text-sidebar-secondary { color: rgb(var(--color-sidebar-inactive)); }
+
+.border-sidebar-primary { border-color: rgb(var(--color-sidebar-border)); }
+
+/* ===== TRANSICIONES MEJORADAS ===== */
+.transition-theme {
+  transition: background-color 200ms ease-in-out,
+              color 200ms ease-in-out,
+              border-color 200ms ease-in-out;
+}
+
+/* ===== HEADER FIJO SÓLIDO SIN TRANSPARENCIA ===== */
+
+/* Header específico con fondo sólido y sin líneas */
+.header-solid {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 50 !important;
+  background-color: var(--header-bg) !important;
+  border: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Header con fondo sólido y sin líneas */
+header {
+  background-color: rgb(var(--color-bg-primary)) !important;
+  border: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
+}
+
+/* Asegurar que el header no sea transparente en ningún tema */
+[data-theme="light"] header {
+  background-color: rgb(255 255 255) !important;
+}
+
+[data-theme="dark"] header {
+  background-color: rgb(15 23 42) !important;
+}
+
+[data-theme="corporate"] header {
+  background-color: rgb(248 250 252) !important;
+}
+
+/* ===== ELEMENTOS SIN CONTORNOS INNECESARIOS ===== */
+
+/* Layout elements - SIN BORDERS */
+.layout-grid,
+.main-content,
+.sidebar-container {
+  border: none !important;
+}
+
+/* Footer sin borders */
+footer {
+  border: none !important;
+  border-top: none !important;
+}
+
+/* Navigation items - CONTORNOS SUTILES */
+nav ul li {
+  border: none !important;
+}
+
+/* Buttons que NO deben tener contorno */
+.btn-clean,
+.theme-selector,
+.notification-btn {
+  border: none !important;
+  background: transparent !important;
+}
+
+.btn-clean:hover,
+.theme-selector:hover,
+.notification-btn:hover {
+  background-color: rgb(var(--color-hover)) !important;
+  border: none !important;
+}
+
+/* Cards con borders muy sutiles */
+.card {
+  border: 1px solid rgb(var(--color-border-primary) / 0.2) !important;
+}
+
+/* ===== RESPONSIVE BORDERS ===== */
+@media (max-width: 768px) {
+  /* En móvil, header también sólido */
+  header {
+    background-color: rgb(var(--color-bg-primary)) !important;
+    border: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+  }
+  
+  .card {
+    border: none !important;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.1) !important;
+  }
+}
+
+/* ===== ESTADOS FOCUS SIN BORDERS MARCADOS ===== */
+.focus-subtle:focus {
+  outline: 2px solid rgb(var(--color-focus) / 0.3);
+  outline-offset: 2px;
+  border-color: rgb(var(--color-focus)) !important;
+}
+
+/* ===== UTILIDADES FINALES ===== */
+.no-border { border: none !important; }
+.border-subtle { border: 1px solid rgb(var(--color-border-primary) / 0.2) !important; }
+.border-invisible { border: 1px solid transparent !important; }
+
+/* ===== FORZAR FONDO SÓLIDO ===== */
+.bg-solid {
+  background-color: rgb(var(--color-bg-primary)) !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+}

@@ -1,768 +1,571 @@
-/**
- * Servicio de Auditorías
- * Portal de Auditorías Técnicas
- */
-
-const { getModels } = require('../../models');
+// auditorias.service.js - Servicio principal para el workflow de auditorías de 8 etapas
+const Auditoria = require('./models/Auditoria.model');
+const Etapa = require('./models/Etapa.model');
+const Documento = require('./models/Documento.model');
 const { Op } = require('sequelize');
+const sequelize = require('../../config/database');
+const notificationService = require('../notifications/notifications.service');
+const etlService = require('../etl/etl.service');
+const iaService = require('../ia/ia.service');
 
 class AuditoriasService {
-
   /**
-   * Crear nueva auditoría
+   * ETAPA 1: Crear nueva auditoría y notificar al proveedor
    */
-  async crearAuditoria(datosAuditoria, usuarioCreador) {
+  async crearAuditoria(datos) {
+    const transaction = await sequelize.transaction();
+    
     try {
-      const { Auditoria, Proveedor, Usuario } = await getModels();
-
-      // Validar que el proveedor existe
-      const proveedor = await Proveedor.findByPk(datosAuditoria.proveedor_id);
-      if (!proveedor) {
-        return {
-          success: false,
-          message: 'El proveedor especificado no existe',
-          data: null
-        };
-      }
-
-      // Validar que el auditor principal existe y tiene rol AUDITOR
-      const auditorPrincipal = await Usuario.findByPk(datosAuditoria.auditor_principal_id);
-      if (!auditorPrincipal) {
-        return {
-          success: false,
-          message: 'El auditor principal especificado no existe',
-          data: null
-        };
-      }
-
-      if (!['AUDITOR', 'ADMIN'].includes(auditorPrincipal.rol)) {
-        return {
-          success: false,
-          message: 'El usuario especificado no tiene permisos de auditor',
-          data: null
-        };
-      }
-
-      // Validar auditor secundario si se especifica
-      if (datosAuditoria.auditor_secundario_id) {
-        const auditorSecundario = await Usuario.findByPk(datosAuditoria.auditor_secundario_id);
-        if (!auditorSecundario || !['AUDITOR', 'ADMIN'].includes(auditorSecundario.rol)) {
-          return {
-            success: false,
-            message: 'El auditor secundario especificado no es válido',
-            data: null
-          };
-        }
-      }
-
-      // Generar código único de auditoría
-      const codigoAuditoria = await this.generarCodigoUnico();
-
-      // Preparar datos para crear la auditoría
-      const nuevaAuditoria = await Auditoria.create({
-        titulo: datosAuditoria.titulo,
-        descripcion: datosAuditoria.descripcion,
-        codigo_auditoria: codigoAuditoria,
-        tipo_auditoria: datosAuditoria.tipo_auditoria || 'INICIAL',
-        modalidad: datosAuditoria.modalidad || 'HIBRIDA',
-        proveedor_id: datosAuditoria.proveedor_id,
-        auditor_principal_id: datosAuditoria.auditor_principal_id,
-        auditor_secundario_id: datosAuditoria.auditor_secundario_id || null,
-        fecha_programada: datosAuditoria.fecha_programada,
-        fecha_fin_programada: datosAuditoria.fecha_fin_programada,
-        version_pliego: datosAuditoria.version_pliego || '2025-v1',
-        duracion_estimada_dias: datosAuditoria.duracion_estimada_dias || 30,
-        direccion_visita: datosAuditoria.direccion_visita,
-        creado_por: usuarioCreador.id,
-        estado: 'PROGRAMADA',
-        etapa_actual: 0,
-        progreso_porcentaje: 0
+      // Crear auditoría principal
+      const auditoria = await Auditoria.create({
+        periodo: datos.periodo,
+        proveedor_id: datos.proveedor_id,
+        sitio_id: datos.sitio_id,
+        fecha_limite_carga: datos.fecha_limite_carga,
+        creado_por_id: datos.usuario_id,
+        estado: 'INICIADA',
+        etapa_actual: 1
+      }, { transaction });
+      
+      // Crear las 8 etapas estándar
+      const etapasPromises = Etapa.ETAPAS_ESTANDAR.map(etapaConfig => {
+        return Etapa.create({
+          auditoria_id: auditoria.id,
+          numero_etapa: etapaConfig.numero,
+          nombre_etapa: etapaConfig.nombre,
+          estado: etapaConfig.numero === 1 ? 'EN_PROCESO' : 'PENDIENTE',
+          fecha_inicio: etapaConfig.numero === 1 ? new Date() : null,
+          documentos_requeridos: etapaConfig.documentos_requeridos
+        }, { transaction });
       });
-
-      // Cargar relaciones para respuesta completa
-      const auditoriaCompleta = await Auditoria.findByPk(nuevaAuditoria.id, {
-        include: [
-          {
-            model: Proveedor,
-            as: 'Proveedor',
-            attributes: ['id', 'razon_social', 'nombre_comercial', 'nit']
-          },
-          {
-            model: Usuario,
-            as: 'AuditorPrincipal',
-            attributes: ['id', 'nombres', 'apellidos', 'email']
-          },
-          {
-            model: Usuario,
-            as: 'AuditorSecundario',
-            attributes: ['id', 'nombres', 'apellidos', 'email'],
-            required: false
-          }
-        ]
-      });
-
-      // Registrar en historial
-      await this.registrarCambioHistorial(nuevaAuditoria.id, 'AUDITORIA_CREADA', {
-        mensaje: 'Auditoría creada exitosamente',
-        usuario_id: usuarioCreador.id,
-        datos_previos: null,
-        datos_nuevos: {
-          titulo: nuevaAuditoria.titulo,
-          proveedor: proveedor.razon_social,
-          auditor_principal: auditorPrincipal.nombres + ' ' + auditorPrincipal.apellidos
-        }
-      });
-
+      
+      await Promise.all(etapasPromises);
+      
+      // Notificar al proveedor (ETAPA 1)
+      await this.notificarInicioAuditoria(auditoria.id, { transaction });
+      
+      // Marcar Etapa 1 como completada y activar Etapa 2
+      await this.completarEtapa(auditoria.id, 1, { transaction });
+      
+      await transaction.commit();
+      
       return {
         success: true,
-        message: 'Auditoría creada exitosamente',
-        data: {
-          auditoria: auditoriaCompleta,
-          codigo_auditoria: codigoAuditoria
-        }
+        auditoria,
+        message: 'Auditoría creada y proveedor notificado'
       };
-
+      
     } catch (error) {
-      console.error('Error creando auditoría:', error);
-      return {
-        success: false,
-        message: 'Error interno del servidor al crear auditoría',
-        data: null
-      };
+      await transaction.rollback();
+      throw new Error(`Error creando auditoría: ${error.message}`);
     }
   }
-
+  
   /**
-   * Obtener lista de auditorías con filtros y paginación
+   * ETAPA 2: Carga de documentación por el proveedor
    */
-  async obtenerAuditorias(filtros = {}, usuario, paginacion = {}) {
+  async cargarDocumento(auditoriaId, documentoData, archivo) {
+    const transaction = await sequelize.transaction();
+    
     try {
-      const { Auditoria, Proveedor, Usuario } = await getModels();
-
-      const { 
-        page = 1, 
-        limit = 10, 
-        estado, 
-        tipo_auditoria, 
-        proveedor_id, 
-        auditor_id,
-        fecha_desde,
-        fecha_hasta 
-      } = { ...filtros, ...paginacion };
-
-      // Construcción de filtros WHERE
-      const whereConditions = {};
-      
-      if (estado) {
-        whereConditions.estado = estado;
-      }
-      
-      if (tipo_auditoria) {
-        whereConditions.tipo_auditoria = tipo_auditoria;
-      }
-      
-      if (proveedor_id) {
-        whereConditions.proveedor_id = proveedor_id;
-      }
-      
-      if (auditor_id) {
-        whereConditions[Op.or] = [
-          { auditor_principal_id: auditor_id },
-          { auditor_secundario_id: auditor_id }
-        ];
-      }
-      
-      if (fecha_desde || fecha_hasta) {
-        whereConditions.fecha_programada = {};
-        if (fecha_desde) {
-          whereConditions.fecha_programada[Op.gte] = new Date(fecha_desde);
-        }
-        if (fecha_hasta) {
-          whereConditions.fecha_hasta[Op.lte] = new Date(fecha_hasta);
-        }
-      }
-
-      // Aplicar filtros de rol - Los proveedores solo ven sus auditorías
-      if (usuario.rol === 'PROVEEDOR') {
-        const emailDomain = usuario.email.split('@')[1];
-        const proveedorRelacionado = await Proveedor.findOne({
-          where: {
-            email_principal: {
-              [Op.like]: `%@${emailDomain}`
-            }
-          }
-        });
-        
-        if (proveedorRelacionado) {
-          whereConditions.proveedor_id = proveedorRelacionado.id;
-        } else {
-          whereConditions.id = null;
-        }
-      }
-
-      // Calcular offset para paginación
-      const offset = (page - 1) * limit;
-
-      // Ejecutar consulta
-      const { count, rows } = await Auditoria.findAndCountAll({
-        where: whereConditions,
-        include: [
-          {
-            model: Proveedor,
-            as: 'Proveedor',
-            attributes: ['id', 'razon_social', 'nombre_comercial', 'nit', 'ciudad']
-          },
-          {
-            model: Usuario,
-            as: 'AuditorPrincipal',
-            attributes: ['id', 'nombres', 'apellidos', 'email']
-          },
-          {
-            model: Usuario,
-            as: 'AuditorSecundario',
-            attributes: ['id', 'nombres', 'apellidos', 'email'],
-            required: false
-          }
-        ],
-        order: [['creado_en', 'DESC']],
-        limit: parseInt(limit),
-        offset: offset
-      });
-
-      // Calcular metadatos de paginación
-      const totalPages = Math.ceil(count / limit);
-      const hasNextPage = page < totalPages;
-      const hasPrevPage = page > 1;
-
-      return {
-        success: true,
-        message: 'Auditorías obtenidas exitosamente',
-        data: {
-          auditorias: rows,
-          pagination: {
-            current_page: parseInt(page),
-            total_pages: totalPages,
-            total_items: count,
-            items_per_page: parseInt(limit),
-            has_next_page: hasNextPage,
-            has_prev_page: hasPrevPage
-          },
-          filters_applied: filtros
-        }
-      };
-
-    } catch (error) {
-      console.error('Error obteniendo auditorías:', error);
-      return {
-        success: false,
-        message: 'Error interno del servidor al obtener auditorías',
-        data: null
-      };
-    }
-  }
-
-  /**
-   * Obtener auditoría por ID
-   */
-  async obtenerAuditoriaPorId(auditoriaId, usuario) {
-    try {
-      const { Auditoria, Proveedor, Usuario, Documento } = await getModels();
-
-      const auditoria = await Auditoria.findByPk(auditoriaId, {
-        include: [
-          {
-            model: Proveedor,
-            as: 'Proveedor'
-          },
-          {
-            model: Usuario,
-            as: 'AuditorPrincipal',
-            attributes: ['id', 'nombres', 'apellidos', 'email', 'telefono']
-          },
-          {
-            model: Usuario,
-            as: 'AuditorSecundario',
-            attributes: ['id', 'nombres', 'apellidos', 'email', 'telefono'],
-            required: false
-          },
-          {
-            model: Documento,
-            as: 'Documentos',
-            attributes: ['id', 'nombre_archivo', 'tipo_documento', 'estado_validacion', 'creado_en'],
-            order: [['creado_en', 'DESC']]
-          }
-        ]
-      });
-
-      if (!auditoria) {
-        return {
-          success: false,
-          message: 'Auditoría no encontrada',
-          data: null
-        };
-      }
-
-      // Verificar permisos de acceso
-      const tieneAcceso = await this.verificarAccesoAuditoria(auditoria, usuario);
-      if (!tieneAcceso) {
-        return {
-          success: false,
-          message: 'No tiene permisos para acceder a esta auditoría',
-          data: null
-        };
-      }
-
-      // Calcular información adicional
-      const informacionAdicional = {
-        dias_restantes: auditoria.calcularDiasRestantes(),
-        esta_vencida: auditoria.estaVencida(),
-        puede_avanzar_etapa: auditoria.puedeAvanzarEtapa(),
-        documentos_count: auditoria.Documentos?.length || 0,
-        progreso_etapas: this.calcularProgresoEtapas(auditoria)
-      };
-
-      return {
-        success: true,
-        message: 'Auditoría obtenida exitosamente',
-        data: {
-          auditoria,
-          informacion_adicional: informacionAdicional
-        }
-      };
-
-    } catch (error) {
-      console.error('Error obteniendo auditoría:', error);
-      return {
-        success: false,
-        message: 'Error interno del servidor al obtener auditoría',
-        data: null
-      };
-    }
-  }
-
-  /**
-   * Avanzar etapa de auditoría
-   */
-  async avanzarEtapa(auditoriaId, usuario, datosEtapa = {}) {
-    try {
-      const { Auditoria } = await getModels();
-
       const auditoria = await Auditoria.findByPk(auditoriaId);
+      
       if (!auditoria) {
-        return {
-          success: false,
-          message: 'Auditoría no encontrada',
-          data: null
-        };
+        throw new Error('Auditoría no encontrada');
       }
-
-      // Verificar permisos para avanzar etapa
-      const puedeAvanzar = await this.verificarPermisosAvanzarEtapa(auditoria, usuario);
-      if (!puedeAvanzar) {
-        return {
-          success: false,
-          message: 'No tiene permisos para avanzar esta etapa',
-          data: null
-        };
+      
+      if (auditoria.estado !== 'CARGANDO') {
+        throw new Error('La auditoría no está en etapa de carga');
       }
-
-      // Verificar que se puede avanzar la etapa
-      if (!auditoria.puedeAvanzarEtapa()) {
-        return {
-          success: false,
-          message: 'No se puede avanzar la etapa en el estado actual',
-          data: null
-        };
+      
+      // Guardar archivo físico
+      const rutaArchivo = await this.guardarArchivo(archivo, auditoriaId);
+      
+      // Crear registro de documento
+      const documento = await Documento.create({
+        auditoria_id: auditoriaId,
+        tipo_documento: documentoData.tipo,
+        nombre_documento: documentoData.nombre,
+        nombre_archivo: archivo.originalname,
+        ruta_archivo: rutaArchivo,
+        tipo_mime: archivo.mimetype,
+        tamaño_bytes: archivo.size,
+        extension: archivo.originalname.split('.').pop(),
+        cargado_por_id: documentoData.usuario_id,
+        es_obligatorio: this.esDocumentoObligatorio(documentoData.tipo),
+        observaciones_proveedor: documentoData.observaciones,
+        estado: 'CARGADO'
+      }, { transaction });
+      
+      // Actualizar contador de documentos
+      await auditoria.increment('documentos_cargados', { transaction });
+      
+      // Si es parque informático, procesar con ETL (ETAPA 3 parcial)
+      if (documentoData.tipo === 'PARQUE_INFORMATICO') {
+        await this.procesarParqueInformatico(documento.id, { transaction });
       }
-
-      // Validar requisitos de la etapa actual
-      const validacionEtapa = await this.validarRequisitosEtapa(auditoria, auditoria.etapa_actual + 1);
-      if (!validacionEtapa.esValido) {
-        return {
-          success: false,
-          message: `No se cumplen los requisitos para avanzar: ${validacionEtapa.mensaje}`,
-          data: validacionEtapa.detalles
-        };
-      }
-
-      const etapaPreviaNumero = auditoria.etapa_actual;
-      const etapaPreviaEstado = auditoria.estado;
-
-      // Avanzar etapa
-      await auditoria.avanzarEtapa();
-
-      // Ejecutar lógica específica de la nueva etapa
-      await this.ejecutarLogicaEtapa(auditoria, datosEtapa, usuario);
-
-      // Registrar cambio en historial
-      await this.registrarCambioHistorial(auditoria.id, 'ETAPA_AVANZADA', {
-        mensaje: `Avanzó de etapa ${etapaPreviaNumero} a etapa ${auditoria.etapa_actual}`,
-        usuario_id: usuario.id,
-        datos_previos: {
-          etapa: etapaPreviaNumero,
-          estado: etapaPreviaEstado
-        },
-        datos_nuevos: {
-          etapa: auditoria.etapa_actual,
-          estado: auditoria.estado
-        }
-      });
-
+      
+      await transaction.commit();
+      
       return {
         success: true,
-        message: `Auditoría avanzada exitosamente a etapa ${auditoria.etapa_actual}`,
-        data: {
-          etapa_actual: auditoria.etapa_actual,
-          estado_actual: auditoria.estado,
-          progreso_porcentaje: auditoria.progreso_porcentaje
-        }
+        documento,
+        message: 'Documento cargado exitosamente'
       };
-
+      
     } catch (error) {
-      console.error('Error avanzando etapa:', error);
-      return {
-        success: false,
-        message: 'Error interno del servidor al avanzar etapa',
-        data: null
-      };
+      await transaction.rollback();
+      throw new Error(`Error cargando documento: ${error.message}`);
     }
   }
-
+  
   /**
-   * Obtener estadísticas de auditorías
+   * Finalizar carga de documentos y pasar a validación
    */
-  async obtenerEstadisticas(usuario, filtros = {}) {
+  async finalizarCarga(auditoriaId, usuarioId) {
+    const transaction = await sequelize.transaction();
+    
     try {
-      const { Auditoria, sequelize } = await getModels();
-
-      // Aplicar filtros de usuario
-      const whereConditions = this.aplicarFiltrosUsuario({}, usuario);
-
-      // Estadísticas generales
-      const totalAuditorias = await Auditoria.count({ where: whereConditions });
+      const auditoria = await Auditoria.findByPk(auditoriaId, {
+        include: [{ model: Documento, as: 'documentos' }]
+      });
       
-      const auditoriasPorEstado = await Auditoria.findAll({
-        where: whereConditions,
-        attributes: [
-          'estado',
-          [sequelize.fn('COUNT', sequelize.col('id')), 'cantidad']
-        ],
-        group: ['estado'],
-        raw: true
-      });
-
-      const auditoriasPorEtapa = await Auditoria.findAll({
-        where: whereConditions,
-        attributes: [
-          'etapa_actual',
-          [sequelize.fn('COUNT', sequelize.col('id')), 'cantidad']
-        ],
-        group: ['etapa_actual'],
-        raw: true
-      });
-
-      // Auditorías próximas a vencer (próximos 7 días)
-      const fechaLimite = new Date();
-      fechaLimite.setDate(fechaLimite.getDate() + 7);
+      // Verificar documentos obligatorios
+      const documentosObligatorios = await this.verificarDocumentosObligatorios(auditoria);
       
-      const auditoriasPorVencer = await Auditoria.count({
-        where: {
-          ...whereConditions,
-          fecha_fin_programada: {
-            [Op.between]: [new Date(), fechaLimite]
-          },
-          estado: {
-            [Op.notIn]: ['COMPLETADA', 'CANCELADA']
-          }
-        }
-      });
-
-      // Auditorías vencidas
-      const auditoriasVencidas = await Auditoria.count({
-        where: {
-          ...whereConditions,
-          fecha_fin_programada: {
-            [Op.lt]: new Date()
-          },
-          estado: {
-            [Op.notIn]: ['COMPLETADA', 'CANCELADA']
-          }
-        }
-      });
-
+      if (!documentosObligatorios.completo) {
+        return {
+          success: false,
+          faltantes: documentosObligatorios.faltantes,
+          message: 'Faltan documentos obligatorios'
+        };
+      }
+      
+      // Actualizar estado y fechas
+      await auditoria.update({
+        estado: 'VALIDANDO',
+        etapa_actual: 3,
+        fecha_carga_completada: new Date()
+      }, { transaction });
+      
+      // Completar Etapa 2
+      await this.completarEtapa(auditoriaId, 2, { transaction });
+      
+      // Iniciar ETAPA 3: Validación automática
+      await this.iniciarValidacionAutomatica(auditoriaId, { transaction });
+      
+      await transaction.commit();
+      
       return {
         success: true,
-        message: 'Estadísticas obtenidas exitosamente',
-        data: {
-          resumen: {
-            total_auditorias: totalAuditorias,
-            por_vencer: auditoriasPorVencer,
-            vencidas: auditoriasVencidas
-          },
-          distribucion: {
-            por_estado: auditoriasPorEstado,
-            por_etapa: auditoriasPorEtapa
-          }
-        }
+        message: 'Carga finalizada, iniciando validación automática'
       };
-
+      
     } catch (error) {
-      console.error('Error obteniendo estadísticas:', error);
-      return {
-        success: false,
-        message: 'Error interno del servidor al obtener estadísticas',
-        data: null
-      };
+      await transaction.rollback();
+      throw new Error(`Error finalizando carga: ${error.message}`);
     }
   }
-
-  // =================== MÉTODOS AUXILIARES ===================
-
+  
   /**
-   * Generar código único de auditoría
+   * ETAPA 3: Validación automática con ETL e IA
    */
-  async generarCodigoUnico() {
-    const { Auditoria } = await getModels();
+  async iniciarValidacionAutomatica(auditoriaId, options = {}) {
+    const { transaction } = options;
     
-    let codigoUnico;
-    let existe = true;
-    
-    while (existe) {
-      const año = new Date().getFullYear();
-      const mes = String(new Date().getMonth() + 1).padStart(2, '0');
-      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-      codigoUnico = `AUD-${año}${mes}-${random}`;
-      
-      const auditoriaExistente = await Auditoria.findOne({
-        where: { codigo_auditoria: codigoUnico }
+    try {
+      const etapa3 = await Etapa.findOne({
+        where: { auditoria_id: auditoriaId, numero_etapa: 3 }
       });
       
-      existe = !!auditoriaExistente;
-    }
-    
-    return codigoUnico;
-  }
-
-  /**
-   * Verificar acceso a auditoría según rol de usuario
-   */
-  async verificarAccesoAuditoria(auditoria, usuario) {
-    // ADMIN tiene acceso a todo
-    if (usuario.rol === 'ADMIN') {
-      return true;
-    }
-
-    // AUDITOR puede ver auditorías donde sea principal o secundario
-    if (usuario.rol === 'AUDITOR') {
-      return auditoria.auditor_principal_id === usuario.id || 
-             auditoria.auditor_secundario_id === usuario.id;
-    }
-
-    // PROVEEDOR solo puede ver sus propias auditorías
-    if (usuario.rol === 'PROVEEDOR') {
-      // TODO: Implementar lógica más robusta de relación usuario-proveedor
-      return true; // Por ahora permitir acceso, se filtra en obtenerAuditorias
-    }
-
-    return false;
-  }
-
-  /**
-   * Verificar permisos para avanzar etapa
-   */
-  async verificarPermisosAvanzarEtapa(auditoria, usuario) {
-    // Solo ADMIN y AUDITOREs asignados pueden avanzar etapas
-    if (usuario.rol === 'ADMIN') {
-      return true;
-    }
-
-    if (usuario.rol === 'AUDITOR') {
-      return auditoria.auditor_principal_id === usuario.id || 
-             auditoria.auditor_secundario_id === usuario.id;
-    }
-
-    return false;
-  }
-
-  /**
-   * Validar requisitos para avanzar a una etapa específica
-   */
-  async validarRequisitosEtapa(auditoria, proximaEtapa) {
-    // Importar módulos de workflow para validaciones
-    const Etapa1Notificacion = require('./workflow/etapa1-notificacion');
-    const Etapa2CargaDocumentos = require('./workflow/etapa2-carga');
-    const Etapa3ValidacionDocumentos = require('./workflow/etapa3-validacion');
-    
-    const { Documento } = await getModels();
-
-    switch (proximaEtapa) {
-      case 1: // ETAPA_1_NOTIFICACION
-        return await Etapa1Notificacion.validarRequisitos(auditoria);
-
-      case 2: // ETAPA_2_CARGA_DOCUMENTOS
-        return { esValido: true, mensaje: 'Notificación enviada, listo para carga de documentos' };
-
-      case 3: // ETAPA_3_VALIDACION_DOCUMENTOS
-        return await Etapa2CargaDocumentos.validarRequisitos(auditoria);
-
-      case 4: // ETAPA_4_ANALISIS_PARQUE
-        return await Etapa3ValidacionDocumentos.validarRequisitos(auditoria);
-
-      case 5: // ETAPA_5_VISITA_PRESENCIAL
-        return { esValido: true, mensaje: 'Análisis de parque informático completado' };
-
-      case 6: // ETAPA_6_INFORME_PRELIMINAR
-        // Verificar que la fecha de visita está programada o completada
-        if (!auditoria.fecha_visita_programada) {
-          return {
-            esValido: false,
-            mensaje: 'Fecha de visita presencial no programada',
-            detalles: { fecha_visita_requerida: true }
-          };
+      await etapa3.update({
+        estado: 'EN_PROCESO',
+        fecha_inicio: new Date()
+      }, { transaction });
+      
+      // Obtener todos los documentos
+      const documentos = await Documento.findAll({
+        where: { 
+          auditoria_id: auditoriaId,
+          es_version_actual: true
+        }
+      });
+      
+      let scoreTotal = 0;
+      let documentosValidados = 0;
+      
+      for (const documento of documentos) {
+        let scoreDocumento = 100; // Score base
+        
+        // Validación ETL para parque informático
+        if (documento.tipo_documento === 'PARQUE_INFORMATICO') {
+          const resultadoETL = await etlService.validarParqueInformatico(documento.ruta_archivo);
+          documento.procesado_etl = true;
+          documento.resultado_etl = resultadoETL;
+          scoreDocumento = resultadoETL.score || 0;
         }
         
-        return { esValido: true, mensaje: 'Visita presencial completada' };
-
-      case 7: // ETAPA_7_REVISION_OBSERVACIONES
-        return { esValido: true, mensaje: 'Informe preliminar disponible' };
-
-      case 8: // ETAPA_8_INFORME_FINAL
-        return { esValido: true, mensaje: 'Revisión de observaciones completada' };
-
-      default:
-        return { esValido: false, mensaje: 'Etapa no válida' };
-    }
-  }
-
-  /**
-   * Ejecutar lógica específica de cada etapa
-   */
-  async ejecutarLogicaEtapa(auditoria, datosEtapa, usuario) {
-    // Importar módulos de workflow
-    const Etapa1Notificacion = require('./workflow/etapa1-notificacion');
-    const Etapa2CargaDocumentos = require('./workflow/etapa2-carga');
-    const Etapa3ValidacionDocumentos = require('./workflow/etapa3-validacion');
-
-    switch (auditoria.etapa_actual) {
-      case 1: // ETAPA_1_NOTIFICACION
-        const resultadoEtapa1 = await Etapa1Notificacion.ejecutar(auditoria, datosEtapa, usuario);
-        console.log(`📧 Etapa 1 completada:`, resultadoEtapa1.message);
-        break;
-
-      case 2: // ETAPA_2_CARGA_DOCUMENTOS
-        const resultadoEtapa2 = await Etapa2CargaDocumentos.ejecutar(auditoria, datosEtapa, usuario);
-        console.log(`📁 Etapa 2 completada:`, resultadoEtapa2.message);
+        // Análisis IA para documentos PDF/imágenes
+        if (['application/pdf', 'image/jpeg', 'image/png'].includes(documento.tipo_mime)) {
+          const resultadoIA = await iaService.analizarDocumento(documento.ruta_archivo, documento.tipo_mime);
+          documento.procesado_ia = true;
+          documento.resultado_ia = resultadoIA;
+          scoreDocumento = (scoreDocumento + (resultadoIA.score || 0)) / 2;
+        }
         
-        if (datosEtapa.fecha_limite_carga) {
-          auditoria.fecha_fin_programada = new Date(datosEtapa.fecha_limite_carga);
-          await auditoria.save();
+        // Actualizar documento con scores
+        await documento.update({
+          score_validacion: scoreDocumento,
+          estado: scoreDocumento >= 70 ? 'APROBADO' : 'REQUIERE_REVISION',
+          fecha_ultima_revision: new Date()
+        }, { transaction });
+        
+        scoreTotal += scoreDocumento;
+        documentosValidados++;
+      }
+      
+      // Calcular score promedio
+      const scoreAutomatico = documentosValidados > 0 ? scoreTotal / documentosValidados : 0;
+      
+      // Actualizar auditoría con score automático
+      const auditoria = await Auditoria.findByPk(auditoriaId);
+      await auditoria.update({
+        score_automatico: scoreAutomatico,
+        estado: 'EN_REVISION',
+        etapa_actual: 4,
+        fecha_validacion_completada: new Date()
+      }, { transaction });
+      
+      // Completar Etapa 3
+      await etapa3.update({
+        estado: 'COMPLETADA',
+        fecha_fin: new Date(),
+        cumplimiento: 100,
+        detalles: {
+          documentos_validados: documentosValidados,
+          score_promedio: scoreAutomatico
         }
-        break;
-
-      case 3: // ETAPA_3_VALIDACION_DOCUMENTOS
-        const resultadoEtapa3 = await Etapa3ValidacionDocumentos.ejecutar(auditoria, datosEtapa, usuario);
-        console.log(`✅ Etapa 3 completada:`, resultadoEtapa3.message);
-        break;
-
-      case 4: // ETAPA_4_ANALISIS_PARQUE
-        // TODO: Integrar con módulo ETL
-        console.log(`🔄 Etapa 4 - Iniciando análisis de parque informático`);
-        // await etlService.procesarParqueInformatico(auditoria.id);
-        break;
-
-      case 5: // ETAPA_5_VISITA_PRESENCIAL
-        if (datosEtapa.fecha_visita) {
-          auditoria.fecha_visita_programada = new Date(datosEtapa.fecha_visita);
-          await auditoria.save();
-        }
-        console.log(`🏢 Etapa 5 - Visita presencial programada`);
-        break;
-
-      case 6: // ETAPA_6_INFORME_PRELIMINAR
-        // TODO: Generar informe preliminar automático
-        console.log(`📊 Etapa 6 - Generando informe preliminar`);
-        break;
-
-      case 7: // ETAPA_7_REVISION_OBSERVACIONES
-        // TODO: Habilitar observaciones del proveedor
-        console.log(`💬 Etapa 7 - Habilitando revisión de observaciones`);
-        break;
-
-      case 8: // ETAPA_8_INFORME_FINAL
-        // TODO: Generar informe final y certificado
-        auditoria.fecha_fin_real = new Date();
-        await auditoria.save();
-        console.log(`🎯 Etapa 8 - Auditoría completada`);
-        break;
-
-      default:
-        console.log(`⚠️ Etapa ${auditoria.etapa_actual} no tiene lógica específica definida`);
+      }, { transaction });
+      
+      // Notificar al auditor para revisión (ETAPA 4)
+      await notificationService.notificarAuditorParaRevision(auditoriaId);
+      
+      return {
+        success: true,
+        score: scoreAutomatico,
+        documentos_validados: documentosValidados
+      };
+      
+    } catch (error) {
+      throw new Error(`Error en validación automática: ${error.message}`);
     }
   }
-
+  
   /**
-   * Calcular progreso de etapas
+   * ETAPA 4: Revisión por auditor
    */
-  calcularProgresoEtapas(auditoria) {
-    const etapas = [
-      { numero: 1, nombre: 'Notificación', completada: auditoria.etapa_actual >= 1 },
-      { numero: 2, nombre: 'Carga Documentos', completada: auditoria.etapa_actual >= 2 },
-      { numero: 3, nombre: 'Validación', completada: auditoria.etapa_actual >= 3 },
-      { numero: 4, nombre: 'Análisis Parque', completada: auditoria.etapa_actual >= 4 },
-      { numero: 5, nombre: 'Visita Presencial', completada: auditoria.etapa_actual >= 5 },
-      { numero: 6, nombre: 'Informe Preliminar', completada: auditoria.etapa_actual >= 6 },
-      { numero: 7, nombre: 'Revisión Observaciones', completada: auditoria.etapa_actual >= 7 },
-      { numero: 8, nombre: 'Informe Final', completada: auditoria.etapa_actual >= 8 }
-    ];
-
+  async evaluarSeccion(auditoriaId, seccion, evaluacion, auditorId) {
+    const transaction = await sequelize.transaction();
+    
+    try {
+      const documento = await Documento.findOne({
+        where: {
+          auditoria_id: auditoriaId,
+          tipo_documento: seccion,
+          es_version_actual: true
+        }
+      });
+      
+      if (!documento) {
+        throw new Error('Documento no encontrado');
+      }
+      
+      // Actualizar evaluación del documento
+      await documento.update({
+        estado: evaluacion.cumple ? 'APROBADO' : 'RECHAZADO',
+        revisado_por_id: auditorId,
+        aprobado_por_id: evaluacion.cumple ? auditorId : null,
+        fecha_aprobacion: evaluacion.cumple ? new Date() : null,
+        observaciones_auditor: evaluacion.observaciones,
+        razon_rechazo: !evaluacion.cumple ? evaluacion.razon : null
+      }, { transaction });
+      
+      // Verificar si todas las secciones han sido evaluadas
+      const documentosPendientes = await Documento.count({
+        where: {
+          auditoria_id: auditoriaId,
+          es_version_actual: true,
+          revisado_por_id: null
+        }
+      });
+      
+      if (documentosPendientes === 0) {
+        // Todas las secciones evaluadas, completar etapa 4
+        await this.completarRevisionAuditor(auditoriaId, auditorId, { transaction });
+      }
+      
+      await transaction.commit();
+      
+      return {
+        success: true,
+        message: 'Sección evaluada correctamente',
+        pendientes: documentosPendientes
+      };
+      
+    } catch (error) {
+      await transaction.rollback();
+      throw new Error(`Error evaluando sección: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Completar revisión del auditor
+   */
+  async completarRevisionAuditor(auditoriaId, auditorId, options = {}) {
+    const { transaction } = options;
+    
+    const auditoria = await Auditoria.findByPk(auditoriaId);
+    const documentos = await Documento.findAll({
+      where: {
+        auditoria_id: auditoriaId,
+        es_version_actual: true
+      }
+    });
+    
+    // Calcular score del auditor
+    const documentosAprobados = documentos.filter(d => d.estado === 'APROBADO').length;
+    const scoreAuditor = (documentosAprobados / documentos.length) * 100;
+    
+    // Actualizar auditoría
+    await auditoria.update({
+      score_auditor: scoreAuditor,
+      score_final: (auditoria.score_automatico + scoreAuditor) / 2,
+      auditor_asignado_id: auditorId,
+      fecha_revision_completada: new Date(),
+      estado: auditoria.requiere_visita ? 'VISITA_PROGRAMADA' : 'INFORME_GENERADO',
+      etapa_actual: auditoria.requiere_visita ? 5 : 7
+    }, { transaction });
+    
+    // Completar Etapa 4
+    await this.completarEtapa(auditoriaId, 4, { transaction });
+    
+    // Si no requiere visita, saltar a generación de informe
+    if (!auditoria.requiere_visita) {
+      await this.generarInforme(auditoriaId, { transaction });
+    }
+    
     return {
-      etapas,
-      completadas: etapas.filter(e => e.completada).length,
-      total: etapas.length,
-      porcentaje: auditoria.progreso_porcentaje
+      success: true,
+      score_auditor: scoreAuditor,
+      requiere_visita: auditoria.requiere_visita
     };
   }
-
+  
   /**
-   * Registrar cambio en historial de auditoría
+   * ETAPA 7: Generar informe final
    */
-  async registrarCambioHistorial(auditoriaId, tipoEvento, detalles) {
+  async generarInforme(auditoriaId, options = {}) {
+    const { transaction } = options;
+    
     try {
-      const { Auditoria } = await getModels();
+      const auditoria = await Auditoria.findByPk(auditoriaId, {
+        include: [
+          { model: Documento, as: 'documentos' },
+          { model: Etapa, as: 'etapas' }
+        ]
+      });
       
-      const auditoria = await Auditoria.findByPk(auditoriaId);
-      if (!auditoria) return;
-
-      const historialActual = auditoria.historial_cambios || [];
-      
-      const nuevoEvento = {
-        id: Date.now().toString(),
-        timestamp: new Date().toISOString(),
-        tipo_evento: tipoEvento,
-        ...detalles
+      // Generar estructura del informe
+      const informe = {
+        codigo_auditoria: auditoria.codigo,
+        periodo: auditoria.periodo,
+        fecha_generacion: new Date(),
+        resumen_ejecutivo: {
+          score_final: auditoria.score_final,
+          documentos_totales: auditoria.documentos_cargados,
+          documentos_aprobados: auditoria.documentos_aprobados,
+          cumplimiento: auditoria.score_final >= 70 ? 'CUMPLE' : 'NO CUMPLE'
+        },
+        detalle_evaluacion: await this.generarDetalleEvaluacion(auditoria),
+        recomendaciones: await this.generarRecomendaciones(auditoria),
+        proximos_pasos: await this.generarProximosPasos(auditoria)
       };
-
-      historialActual.push(nuevoEvento);
       
-      auditoria.historial_cambios = historialActual;
-      await auditoria.save();
-
+      // Guardar informe como documento
+      const rutaInforme = await this.guardarInformePDF(informe, auditoriaId);
+      
+      await Documento.create({
+        auditoria_id: auditoriaId,
+        tipo_documento: 'INFORME_FINAL',
+        nombre_documento: `Informe Final - ${auditoria.codigo}`,
+        nombre_archivo: `informe_${auditoria.codigo}.pdf`,
+        ruta_archivo: rutaInforme,
+        tipo_mime: 'application/pdf',
+        tamaño_bytes: 0, // Se actualizará después de generar el PDF
+        extension: 'pdf',
+        cargado_por_id: auditoria.auditor_asignado_id,
+        estado: 'APROBADO'
+      }, { transaction });
+      
+      // Actualizar estado
+      await auditoria.update({
+        estado: 'INFORME_GENERADO',
+        etapa_actual: 7,
+        fecha_informe: new Date()
+      }, { transaction });
+      
+      // Completar Etapa 7
+      await this.completarEtapa(auditoriaId, 7, { transaction });
+      
+      // Iniciar ETAPA 8: Notificación y cierre
+      await this.notificarResultados(auditoriaId, { transaction });
+      
+      return {
+        success: true,
+        informe,
+        ruta: rutaInforme
+      };
+      
     } catch (error) {
-      console.error('Error registrando cambio en historial:', error);
+      throw new Error(`Error generando informe: ${error.message}`);
     }
   }
-
+  
   /**
-   * Aplicar filtros según rol de usuario
+   * ETAPA 8: Notificar resultados y cerrar auditoría
    */
-  aplicarFiltrosUsuario(whereConditions, usuario) {
-    if (usuario.rol === 'PROVEEDOR') {
-      // Los proveedores solo ven sus auditorías
-      // TODO: Implementar lógica más robusta
-      whereConditions.proveedor_id = { [Op.ne]: null };
-    }
+  async notificarResultados(auditoriaId, options = {}) {
+    const { transaction } = options;
     
-    return whereConditions;
+    try {
+      const auditoria = await Auditoria.findByPk(auditoriaId);
+      
+      // Enviar notificación al proveedor
+      await notificationService.notificarResultadosAuditoria(auditoriaId);
+      
+      // Actualizar estado final
+      await auditoria.update({
+        estado: 'CERRADA',
+        etapa_actual: 8,
+        fecha_cierre: new Date()
+      }, { transaction });
+      
+      // Completar Etapa 8
+      await this.completarEtapa(auditoriaId, 8, { transaction });
+      
+      return {
+        success: true,
+        message: 'Auditoría cerrada y resultados notificados'
+      };
+      
+    } catch (error) {
+      throw new Error(`Error notificando resultados: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Métodos auxiliares
+   */
+  
+  async completarEtapa(auditoriaId, numeroEtapa, options = {}) {
+    const { transaction } = options;
+    
+    const etapa = await Etapa.findOne({
+      where: { auditoria_id: auditoriaId, numero_etapa: numeroEtapa }
+    });
+    
+    if (etapa && etapa.estado !== 'COMPLETADA') {
+      await etapa.update({
+        estado: 'COMPLETADA',
+        fecha_fin: new Date(),
+        cumplimiento: 100
+      }, { transaction });
+      
+      // Activar siguiente etapa si existe
+      const siguienteEtapa = await Etapa.findOne({
+        where: { auditoria_id: auditoriaId, numero_etapa: numeroEtapa + 1 }
+      });
+      
+      if (siguienteEtapa) {
+        await siguienteEtapa.update({
+          estado: 'EN_PROCESO',
+          fecha_inicio: new Date()
+        }, { transaction });
+      }
+    }
+  }
+  
+  async verificarDocumentosObligatorios(auditoria) {
+    const tiposObligatorios = [
+      'CUARTO_TECNOLOGIA',
+      'ENERGIA',
+      'SEGURIDAD_INFORMATICA',
+      'PARQUE_INFORMATICO'
+    ];
+    
+    const documentosCargados = await Documento.findAll({
+      where: {
+        auditoria_id: auditoria.id,
+        tipo_documento: tiposObligatorios,
+        es_version_actual: true
+      },
+      attributes: ['tipo_documento']
+    });
+    
+    const tiposCargados = documentosCargados.map(d => d.tipo_documento);
+    const faltantes = tiposObligatorios.filter(tipo => !tiposCargados.includes(tipo));
+    
+    return {
+      completo: faltantes.length === 0,
+      faltantes
+    };
+  }
+  
+  esDocumentoObligatorio(tipo) {
+    const obligatorios = [
+      'CUARTO_TECNOLOGIA',
+      'ENERGIA', 
+      'SEGURIDAD_INFORMATICA',
+      'PARQUE_INFORMATICO'
+    ];
+    return obligatorios.includes(tipo);
+  }
+  
+  async guardarArchivo(archivo, auditoriaId) {
+    // Implementar lógica de guardado de archivo
+    // Por ahora retornamos una ruta mock
+    return `/uploads/auditorias/${auditoriaId}/${archivo.originalname}`;
+  }
+  
+  async procesarParqueInformatico(documentoId, options = {}) {
+    // Se implementará con el servicio ETL
+    console.log('Procesando parque informático:', documentoId);
+  }
+  
+  async generarDetalleEvaluacion(auditoria) {
+    // Generar detalle de evaluación para el informe
+    return {};
+  }
+  
+  async generarRecomendaciones(auditoria) {
+    // Generar recomendaciones basadas en los resultados
+    return [];
+  }
+  
+  async generarProximosPasos(auditoria) {
+    // Generar próximos pasos para el proveedor
+    return [];
+  }
+  
+  async guardarInformePDF(informe, auditoriaId) {
+    // Implementar generación de PDF
+    // Por ahora retornamos una ruta mock
+    return `/uploads/auditorias/${auditoriaId}/informe_final.pdf`;
+  }
+  
+  async notificarInicioAuditoria(auditoriaId, options = {}) {
+    // Implementar notificación al proveedor
+    console.log('Notificando inicio de auditoría:', auditoriaId);
   }
 }
 

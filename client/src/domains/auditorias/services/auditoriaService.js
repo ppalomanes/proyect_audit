@@ -1,223 +1,317 @@
-// client/src/domains/auditorias/services/auditoriaService.js
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// auditoriaService.js - Servicio para comunicación con API de auditorías
+import api from '../../../services/api';
 
 class AuditoriaService {
-  constructor() {
-    this.baseURL = `${API_BASE_URL}/auditorias`;
+  /**
+   * Crear nueva auditoría (ETAPA 1)
+   */
+  async crearAuditoria(datos) {
+    try {
+      const response = await api.post('/auditorias', datos);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
   }
 
-  // Helper para manejar requests con autenticación
-  async fetchWithAuth(url, options = {}) {
-    const token = localStorage.getItem('auth_token');
-    
-    const defaultHeaders = {
-      'Authorization': `Bearer ${token}`,
-      ...(options.headers || {})
+  /**
+   * Obtener listado de auditorías con filtros
+   */
+  async listarAuditorias(filtros = {}) {
+    try {
+      const queryParams = new URLSearchParams(filtros).toString();
+      const response = await api.get(`/auditorias?${queryParams}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Obtener detalle completo de una auditoría
+   */
+  async obtenerAuditoria(id) {
+    try {
+      const response = await api.get(`/auditorias/${id}`);
+      return response.data.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Cargar documento (ETAPA 2)
+   */
+  async cargarDocumento(auditoriaId, formData) {
+    try {
+      const response = await api.post(`/auditorias/${auditoriaId}/documentos`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Finalizar carga de documentos (ETAPA 2 → 3)
+   */
+  async finalizarCarga(auditoriaId) {
+    try {
+      const response = await api.post(`/auditorias/${auditoriaId}/finalizar-carga`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Evaluar sección (ETAPA 4)
+   */
+  async evaluarSeccion(auditoriaId, datos) {
+    try {
+      const response = await api.post(`/auditorias/${auditoriaId}/evaluar-seccion`, datos);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Programar visita presencial (ETAPA 5)
+   */
+  async programarVisita(auditoriaId, datos) {
+    try {
+      const response = await api.post(`/auditorias/${auditoriaId}/programar-visita`, datos);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Completar visita (ETAPA 6)
+   */
+  async completarVisita(auditoriaId, formData) {
+    try {
+      const response = await api.post(`/auditorias/${auditoriaId}/completar-visita`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Generar informe final (ETAPA 7)
+   */
+  async generarInforme(auditoriaId) {
+    try {
+      const response = await api.post(`/auditorias/${auditoriaId}/generar-informe`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Cerrar auditoría (ETAPA 8)
+   */
+  async cerrarAuditoria(auditoriaId) {
+    try {
+      const response = await api.post(`/auditorias/${auditoriaId}/cerrar`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Obtener progreso de auditoría
+   */
+  async obtenerProgreso(auditoriaId) {
+    try {
+      const response = await api.get(`/auditorias/${auditoriaId}/progreso`);
+      return response.data.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Listar documentos de una auditoría
+   */
+  async listarDocumentos(auditoriaId, incluirVersiones = false) {
+    try {
+      const response = await api.get(`/auditorias/${auditoriaId}/documentos`, {
+        params: { incluir_versiones: incluirVersiones }
+      });
+      return response.data.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Descargar documento
+   */
+  async descargarDocumento(auditoriaId, documentoId) {
+    try {
+      const response = await api.get(
+        `/auditorias/${auditoriaId}/documentos/${documentoId}/descargar`,
+        { responseType: 'blob' }
+      );
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Obtener estadísticas generales
+   */
+  async obtenerEstadisticas(filtros = {}) {
+    try {
+      const queryParams = new URLSearchParams(filtros).toString();
+      const response = await api.get(`/auditorias/estadisticas/general?${queryParams}`);
+      return response.data.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Asignar auditor
+   */
+  async asignarAuditor(auditoriaId, auditorId) {
+    try {
+      const response = await api.post(`/auditorias/${auditoriaId}/asignar-auditor`, {
+        auditor_id: auditorId
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Marcar excepción
+   */
+  async marcarExcepcion(auditoriaId, justificacion) {
+    try {
+      const response = await api.post(`/auditorias/${auditoriaId}/marcar-excepcion`, {
+        justificacion
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Reenviar notificación
+   */
+  async reenviarNotificacion(auditoriaId, tipo) {
+    try {
+      const response = await api.post(`/auditorias/${auditoriaId}/reenviar-notificacion`, {
+        tipo
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Manejo de errores
+   */
+  handleError(error) {
+    if (error.response) {
+      // Error de respuesta del servidor
+      const message = error.response.data?.message || 'Error en el servidor';
+      const status = error.response.status;
+      
+      if (status === 401) {
+        // Token expirado o no válido
+        window.location.href = '/login';
+        return new Error('Sesión expirada');
+      }
+      
+      if (status === 403) {
+        return new Error('No tienes permisos para realizar esta acción');
+      }
+      
+      if (status === 404) {
+        return new Error('Recurso no encontrado');
+      }
+      
+      if (status === 422) {
+        // Errores de validación
+        const validationErrors = error.response.data?.errors || {};
+        const errorMessages = Object.values(validationErrors).flat().join(', ');
+        return new Error(errorMessages || message);
+      }
+      
+      return new Error(message);
+    } else if (error.request) {
+      // La petición se hizo pero no se recibió respuesta
+      return new Error('No se pudo conectar con el servidor');
+    } else {
+      // Error en la configuración de la petición
+      return new Error('Error al procesar la solicitud');
+    }
+  }
+
+  /**
+   * Utilidades
+   */
+  
+  // Formatear fecha para mostrar
+  formatearFecha(fecha) {
+    if (!fecha) return '-';
+    return new Date(fecha).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  // Obtener color según estado
+  getColorEstado(estado) {
+    const colores = {
+      'INICIADA': 'blue',
+      'CARGANDO': 'indigo',
+      'VALIDANDO': 'purple',
+      'EN_REVISION': 'pink',
+      'VISITA_PROGRAMADA': 'orange',
+      'VISITA_REALIZADA': 'yellow',
+      'INFORME_GENERADO': 'green',
+      'CERRADA': 'gray'
     };
-
-    // No agregar Content-Type para FormData (multipart)
-    if (!(options.body instanceof FormData)) {
-      defaultHeaders['Content-Type'] = 'application/json';
-    }
-
-    const response = await fetch(url, {
-      ...options,
-      headers: defaultHeaders
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      
-      // ✅ Manejo optimizado de errores
-      const errorMessage = errorData.message || 
-                          errorData.error || 
-                          `Error ${response.status}: ${response.statusText}`;
-      
-      throw new Error(errorMessage);
-    }
-
-    return response.json();
+    return colores[estado] || 'gray';
   }
 
-  // ====================================
-  // GESTIÓN DE AUDITORÍAS
-  // ====================================
-
-  async obtenerAuditorias(filtros = {}) {
-    const params = new URLSearchParams(filtros);
-    return this.fetchWithAuth(`${this.baseURL}?${params}`);
-  }
-
-  async obtenerAuditoriaPorId(auditoriaId) {
-    return this.fetchWithAuth(`${this.baseURL}/${auditoriaId}`);
-  }
-
-  async crearAuditoria(datosAuditoria) {
-    return this.fetchWithAuth(this.baseURL, {
-      method: 'POST',
-      body: JSON.stringify(datosAuditoria)
-    });
-  }
-
-  async actualizarAuditoria(auditoriaId, datos) {
-    return this.fetchWithAuth(`${this.baseURL}/${auditoriaId}`, {
-      method: 'PUT',
-      body: JSON.stringify(datos)
-    });
-  }
-
-  // ====================================
-  // GESTIÓN DE DOCUMENTOS POR SECCIÓN
-  // ====================================
-
-  async cargarDocumento(auditoriaId, seccion, formData) {
-    return this.fetchWithAuth(`${this.baseURL}/${auditoriaId}/documentos/${seccion}`, {
-      method: 'POST',
-      body: formData // FormData ya incluye el archivo y metadatos
-    });
-  }
-
-  async actualizarDocumento(auditoriaId, documentoId, formData) {
-    return this.fetchWithAuth(`${this.baseURL}/${auditoriaId}/documentos/${documentoId}`, {
-      method: 'PUT',
-      body: formData
-    });
-  }
-
-  async eliminarDocumento(auditoriaId, documentoId) {
-    return this.fetchWithAuth(`${this.baseURL}/${auditoriaId}/documentos/${documentoId}`, {
-      method: 'DELETE'
-    });
-  }
-
-  async obtenerDocumentos(auditoriaId) {
-    return this.fetchWithAuth(`${this.baseURL}/${auditoriaId}/documentos`);
-  }
-
-  // ====================================
-  // PROCESAMIENTO ETL PARQUE INFORMÁTICO
-  // ====================================
-
-  async procesarParqueInformatico(auditoriaId, formData) {
-    return this.fetchWithAuth(`${API_BASE_URL}/etl/process`, {
-      method: 'POST',
-      body: formData, // FormData con archivo + configuración
-      headers: {
-        'X-Auditoria-ID': auditoriaId // Header personalizado para asociar con auditoría
-      }
-    });
-  }
-
-  async obtenerEstadoJob(jobId) {
-    return this.fetchWithAuth(`${API_BASE_URL}/etl/jobs/${jobId}/status`);
-  }
-
-  async obtenerResultadosJob(jobId) {
-    return this.fetchWithAuth(`${API_BASE_URL}/etl/jobs/${jobId}/results`);
-  }
-
-  async validarArchivoETL(formData) {
-    return this.fetchWithAuth(`${API_BASE_URL}/etl/validate-only`, {
-      method: 'POST',
-      body: formData
-    });
-  }
-
-  // ====================================
-  // WORKFLOW DE ETAPAS
-  // ====================================
-
-  async finalizarCargaDocumentos(auditoriaId) {
-    return this.fetchWithAuth(`${this.baseURL}/${auditoriaId}/finalizar-carga`, {
-      method: 'POST'
-    });
-  }
-
-  async enviarAEvaluacion(auditoriaId) {
-    return this.fetchWithAuth(`${this.baseURL}/${auditoriaId}/enviar-evaluacion`, {
-      method: 'POST'
-    });
-  }
-
-  // ====================================
-  // COMUNICACIONES Y MENSAJERÍA
-  // ====================================
-
-  async enviarMensaje(auditoriaId, mensaje) {
-    return this.fetchWithAuth(`${this.baseURL}/${auditoriaId}/mensajes`, {
-      method: 'POST',
-      body: JSON.stringify(mensaje)
-    });
-  }
-
-  async obtenerMensajes(auditoriaId, filtros = {}) {
-    const params = new URLSearchParams(filtros);
-    return this.fetchWithAuth(`${this.baseURL}/${auditoriaId}/mensajes?${params}`);
-  }
-
-  // ====================================
-  // INCUMPLIMIENTOS Y VALIDACIONES
-  // ====================================
-
-  async obtenerIncumplimientos(auditoriaId, filtros = {}) {
-    const params = new URLSearchParams(filtros);
-    return this.fetchWithAuth(`${this.baseURL}/${auditoriaId}/incumplimientos?${params}`);
-  }
-
-  async exportarIncumplimientos(auditoriaId, formato = 'excel') {
-    const token = localStorage.getItem('auth_token');
-    const url = `${this.baseURL}/${auditoriaId}/incumplimientos/export?formato=${formato}`;
-    
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Error exportando incumplimientos: ${response.statusText}`);
-    }
-
-    return response.blob();
-  }
-
-  // ====================================
-  // REPORTES Y MÉTRICAS
-  // ====================================
-
-  async obtenerResumenAuditoria(auditoriaId) {
-    return this.fetchWithAuth(`${this.baseURL}/${auditoriaId}/resumen`);
-  }
-
-  async obtenerMetricasAuditoria(auditoriaId) {
-    return this.fetchWithAuth(`${this.baseURL}/${auditoriaId}/metricas`);
-  }
-
-  // ====================================
-  // CONFIGURACIÓN Y PLANTILLAS
-  // ====================================
-
-  async obtenerUmbralesTecnicos() {
-    return this.fetchWithAuth(`${API_BASE_URL}/etl/validation-rules`);
-  }
-
-  // ====================================
-  // HISTORIAL Y TRAZABILIDAD
-  // ====================================
-
-  async obtenerHistorialCambios(auditoriaId) {
-    return this.fetchWithAuth(`${this.baseURL}/${auditoriaId}/historial`);
-  }
-
-  async obtenerBitacora(auditoriaId, filtros = {}) {
-    const params = new URLSearchParams(filtros);
-    return this.fetchWithAuth(`${this.baseURL}/${auditoriaId}/bitacora?${params}`);
+  // Obtener texto descriptivo del estado
+  getTextoEstado(estado) {
+    const textos = {
+      'INICIADA': 'Auditoría iniciada',
+      'CARGANDO': 'Cargando documentos',
+      'VALIDANDO': 'Validación automática',
+      'EN_REVISION': 'En revisión por auditor',
+      'VISITA_PROGRAMADA': 'Visita programada',
+      'VISITA_REALIZADA': 'Visita realizada',
+      'INFORME_GENERADO': 'Informe generado',
+      'CERRADA': 'Auditoría cerrada'
+    };
+    return textos[estado] || estado;
   }
 }
 
-// Crear instancia singleton
-const auditoriaService = new AuditoriaService();
-
-export { auditoriaService };
-export default auditoriaService;
+export default new AuditoriaService();

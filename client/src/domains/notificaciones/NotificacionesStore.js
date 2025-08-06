@@ -1,4 +1,4 @@
-// NotificacionesStore.js - Store para centro de notificaciones
+// NotificacionesStore.js - Store para centro de notificaciones (OPTIMIZADO)
 import { create } from "zustand";
 import useAuthStore from "../auth/authStore";
 
@@ -32,14 +32,29 @@ const useNotificacionesStore = create((set, get) => ({
     prioridad: 'todas' // 'todas', 'alta', 'media', 'baja'
   },
   polling: null, // ID del interval para polling
+  lastFetch: null, // Timestamp del último fetch para evitar spam
+  isPollingActive: false, // Flag para controlar polling
 
   // === ACCIONES ===
 
   /**
-   * Obtener notificaciones
+   * Obtener notificaciones (con throttling)
    */
-  fetchNotificaciones: async () => {
-    set({ loading: true, error: null });
+  fetchNotificaciones: async (forceRefresh = false) => {
+    const now = Date.now();
+    const { lastFetch, loading } = get();
+    
+    // Throttling: no hacer fetch si fue hace menos de 5 segundos (excepto force refresh)
+    if (!forceRefresh && lastFetch && (now - lastFetch < 5000)) {
+      return;
+    }
+    
+    // Evitar múltiples requests simultáneos
+    if (loading && !forceRefresh) {
+      return;
+    }
+    
+    set({ loading: true, error: null, lastFetch: now });
     
     try {
       const { filtros } = get();
@@ -66,7 +81,10 @@ const useNotificacionesStore = create((set, get) => ({
         error: null
       });
 
-      console.log('✅ Notificaciones obtenidas:', data.notificaciones?.length || 0);
+      // Solo log en modo debug o force refresh
+      if (forceRefresh || import.meta.env.DEV) {
+        console.log('✅ Notificaciones obtenidas:', data.notificaciones?.length || 0);
+      }
       
     } catch (error) {
       console.error('❌ Error obteniendo notificaciones:', error);
@@ -217,46 +235,67 @@ const useNotificacionesStore = create((set, get) => ({
   },
 
   /**
-   * Iniciar polling automático de notificaciones
+   * Iniciar polling automático de notificaciones (OPTIMIZADO)
    */
-  iniciarPolling: (intervalo = 30000) => {
-    const { polling } = get();
+  iniciarPolling: (intervalo = 60000) => { // Cambiado a 60s por defecto
+    const { polling, isPollingActive } = get();
+    
+    // Evitar múltiples polling activos
+    if (isPollingActive) {
+      console.warn('⚠️ Polling ya está activo, ignorando nueva solicitud');
+      return;
+    }
     
     // Limpiar polling anterior si existe
     if (polling) {
       clearInterval(polling);
     }
     
+    // Fetch inicial
+    get().fetchNotificaciones(true);
+    
     // Iniciar nuevo polling
     const pollingId = setInterval(() => {
-      get().fetchNotificaciones();
+      // Solo hacer polling si la pestaña está visible
+      if (!document.hidden) {
+        get().fetchNotificaciones();
+      }
     }, intervalo);
     
-    set({ polling: pollingId });
+    set({ 
+      polling: pollingId, 
+      isPollingActive: true 
+    });
     
-    console.log('✅ Polling de notificaciones iniciado');
+    console.log(`✅ Polling de notificaciones iniciado (${intervalo/1000}s)`);
   },
 
   /**
-   * Detener polling automático
+   * Detener polling automático (OPTIMIZADO)
    */
   detenerPolling: () => {
     const { polling } = get();
     
     if (polling) {
       clearInterval(polling);
-      set({ polling: null });
+      set({ 
+        polling: null, 
+        isPollingActive: false 
+      });
       console.log('✅ Polling de notificaciones detenido');
     }
   },
 
   /**
-   * Actualizar filtros
+   * Actualizar filtros y refrescar datos
    */
   setFiltros: (nuevosFiltros) => {
     set(state => ({
       filtros: { ...state.filtros, ...nuevosFiltros }
     }));
+    
+    // Refrescar datos con nuevos filtros
+    get().fetchNotificaciones(true);
   },
 
   /**
@@ -270,6 +309,9 @@ const useNotificacionesStore = create((set, get) => ({
         prioridad: 'todas'
       }
     });
+    
+    // Refrescar datos sin filtros
+    get().fetchNotificaciones(true);
   },
 
   /**
@@ -295,7 +337,14 @@ const useNotificacionesStore = create((set, get) => ({
   },
 
   /**
-   * Reset del estado
+   * Refrescar datos manualmente
+   */
+  refresh: () => {
+    get().fetchNotificaciones(true);
+  },
+
+  /**
+   * Reset del estado (MEJORADO)
    */
   reset: () => {
     const { polling } = get();
@@ -310,6 +359,9 @@ const useNotificacionesStore = create((set, get) => ({
       noLeidas: 0,
       error: null,
       polling: null,
+      lastFetch: null,
+      isPollingActive: false,
+      loading: false,
       filtros: {
         tipo: 'todas',
         leida: 'todas',
@@ -318,6 +370,29 @@ const useNotificacionesStore = create((set, get) => ({
     });
   }
 }));
+
+// Limpiar polling cuando la pestaña se cierra
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    const store = useNotificacionesStore.getState();
+    if (store.polling) {
+      clearInterval(store.polling);
+    }
+  });
+  
+  // Pausar/reanudar polling según visibilidad de la pestaña
+  document.addEventListener('visibilitychange', () => {
+    const store = useNotificacionesStore.getState();
+    if (document.hidden) {
+      // Pestaña oculta - el polling se pausa automáticamente
+      console.log('🔇 Polling pausado (pestaña oculta)');
+    } else if (store.isPollingActive) {
+      // Pestaña visible - refrescar datos inmediatamente
+      console.log('🔊 Polling reactivado (pestaña visible)');
+      store.fetchNotificaciones(true);
+    }
+  });
+}
 
 export { useNotificacionesStore };
 export default useNotificacionesStore;

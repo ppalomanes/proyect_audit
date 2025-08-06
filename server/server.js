@@ -499,8 +499,21 @@ app.use("/api/auditorias", auditoriasRoutes);
 app.use("/api/etl", etlRoutes);
 app.use("/api/ia", iaRoutes);
 app.use("/api/notificaciones", notificacionesRoutes);
+// Bridge para compatibilidad frontend - mapear /api/notifications a /api/notificaciones
+app.use("/api/notifications", notificacionesRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/dashboards", dashboardsRoutes);
+
+// Rutas adicionales para versiones si están disponibles
+try {
+  const versionesRoutes = require("./domains/versiones/versiones.routes");
+  app.use("/api/versiones", versionesRoutes);
+  console.log("✅ Rutas de versiones cargadas");
+} catch (error) {
+  app.get("/api/versiones", (req, res) => {
+    res.json({ status: "Versiones module loading...", versiones: [], timestamp: new Date().toISOString() });
+  });
+}
 
 // Rutas adicionales para bitácora si están disponibles
 try {
@@ -512,6 +525,29 @@ try {
     res.json({ status: "Bitacora module loading...", logs: [], timestamp: new Date().toISOString() });
   });
 }
+
+// Endpoint adicional para health check completo
+app.get("/health", (req, res) => {
+  res.json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    service: "Portal Auditorías Técnicas"
+  });
+});
+
+// Endpoint para chat workspaces
+app.get("/api/chat/workspaces", (req, res) => {
+  res.json({
+    success: true,
+    workspaces: [
+      {
+        id: 1,
+        name: "General",
+        description: "Espacio general de comunicación"
+      }
+    ]
+  });
+});
 
 // ===== MANEJO DE ERRORES =====
 app.use("*", (req, res) => {

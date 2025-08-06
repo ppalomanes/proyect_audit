@@ -1,0 +1,125 @@
+/* ============================================= */
+/* SISTEMA DE TEMAS SIMPLIFICADO Y FORZADO */
+/* ============================================= */
+
+/* Este archivo complementa index.css con definiciones adicionales */
+
+/* ============================================= */
+/* CONFIGURACIÓN BASE POR TEMA */
+/* ============================================= */
+
+/* TEMA CLARO - Definiciones adicionales */
+.light {
+  /* Sombras suaves */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* TEMA OSCURO - Definiciones adicionales */
+.dark {
+  /* Sombras pronunciadas */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+}
+
+/* TEMA CORPORATIVO - Definiciones adicionales */
+.corporate {
+  /* Sombras con tinte azul */
+  --shadow-sm: 0 1px 2px rgba(30, 64, 175, 0.1);
+  --shadow-md: 0 4px 6px rgba(30, 64, 175, 0.15);
+  --shadow-lg: 0 10px 15px rgba(30, 64, 175, 0.2);
+}
+
+/* ============================================= */
+/* MEJORAS ESPECÍFICAS POR TEMA */
+/* ============================================= */
+
+/* Tema corporativo - Sidebar con gradiente */
+.corporate .clickup-sidebar {
+  background: linear-gradient(180deg, #1e40af 0%, #1e3a8a 100%) !important;
+  box-shadow: 4px 0 20px rgba(30, 64, 175, 0.2);
+}
+
+.corporate .clickup-nav-item {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.corporate .clickup-nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+}
+
+.corporate .clickup-nav-item-active {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  font-weight: 700 !important;
+}
+
+/* Tema oscuro - Efectos glass */
+.dark .card,
+.dark [class*="card"] {
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Tema claro - Sombras suaves */
+.light .card,
+.light [class*="card"] {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.light .card:hover,
+.light [class*="card"]:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================= */
+/* HEADER CONSISTENTE */
+/* ============================================= */
+
+header,
+.header,
+[class*="header"],
+.top-navbar {
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  height: 64px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 24px !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 40 !important;
+}
+
+/* ============================================= */
+/* SEARCH INPUT MEJORADO */
+/* ============================================= */
+
+.search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 400px;
+}
+
+.search-input {
+  padding-left: 48px !important;
+}
+
+.search-icon,
+.search-container .search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+  pointer-events: none;
+  z-index: 1;
+}

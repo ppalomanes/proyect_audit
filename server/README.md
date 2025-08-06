@@ -5,6 +5,7 @@ Backend del Portal de Auditorías Técnicas desarrollado con Node.js, Express, M
 ## ✅ Estado de Implementación
 
 ### 🟢 **COMPLETO - Configuraciones Base**
+
 - ✅ Estructura de proyecto con separación por dominios
 - ✅ Configuración de base de datos MySQL
 - ✅ Configuración de Redis para cache y jobs
@@ -13,6 +14,7 @@ Backend del Portal de Auditorías Técnicas desarrollado con Node.js, Express, M
 - ✅ Middleware de seguridad, logging y manejo de errores
 
 ### 🟢 **COMPLETO - Modelos de Datos**
+
 - ✅ Usuario (autenticación y roles)
 - ✅ Proveedor (entidades del call center)
 - ✅ Auditoria (proceso de 8 etapas)
@@ -21,6 +23,7 @@ Backend del Portal de Auditorías Técnicas desarrollado con Node.js, Express, M
 - ✅ Relaciones entre modelos configuradas
 
 ### 🟡 **PARCIAL - API Endpoints**
+
 - ✅ Rutas de autenticación (placeholders implementados)
 - ⏳ Controladores de autenticación (pendiente)
 - ⏳ Rutas de auditorías (pendiente)
@@ -28,6 +31,7 @@ Backend del Portal de Auditorías Técnicas desarrollado con Node.js, Express, M
 - ⏳ Rutas de IA (pendiente)
 
 ### 🔴 **PENDIENTE - Funcionalidades Avanzadas**
+
 - ⏳ Motor ETL completo
 - ⏳ Integración con Ollama
 - ⏳ Sistema de notificaciones
@@ -39,7 +43,7 @@ Backend del Portal de Auditorías Técnicas desarrollado con Node.js, Express, M
 ### Prerequisitos
 
 1. **Node.js 18+** y **npm 9+**
-2. **MySQL 8.0+** 
+2. **MySQL 8.0+**
 3. **Redis** (opcional pero recomendado)
 4. **Ollama** (opcional para funcionalidades de IA)
 
@@ -69,6 +73,7 @@ npm run health
 ### Configuración de Servicios
 
 #### MySQL
+
 ```sql
 -- Crear base de datos
 CREATE DATABASE portal_auditorias_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -80,6 +85,7 @@ FLUSH PRIVILEGES;
 ```
 
 #### Redis (Opcional)
+
 ```bash
 # Instalar Redis
 # Windows: https://redis.io/download
@@ -91,6 +97,7 @@ redis-server
 ```
 
 #### Ollama (Opcional)
+
 ```bash
 # Instalar Ollama: https://ollama.ai/download
 
@@ -105,6 +112,7 @@ ollama list
 ## 🚀 Ejecución
 
 ### Desarrollo
+
 ```bash
 # Iniciar en modo desarrollo (con hot reload)
 npm run dev
@@ -113,6 +121,7 @@ npm run dev
 ```
 
 ### Producción
+
 ```bash
 # Iniciar en modo producción
 npm start
@@ -140,11 +149,13 @@ npm run lint:fix         # Corregir problemas automáticamente
 ## 📡 API Endpoints
 
 ### Información General
+
 - `GET /` - Información del servidor
 - `GET /health` - Estado de salud del sistema
 - `GET /info` - Información básica del servidor
 
 ### Autenticación (`/api/auth`)
+
 ```bash
 # Públicos
 POST /api/auth/login              # Iniciar sesión
@@ -164,13 +175,16 @@ DELETE /api/auth/sessions/:id     # Cerrar sesión específica
 ```
 
 ### Auditorías (`/api/auditorias`) - ⏳ Pendiente
+
 ### ETL (`/api/etl`) - ⏳ Pendiente
+
 ### IA (`/api/ia`) - ⏳ Pendiente
 
 ## 🏗️ Arquitectura
 
 ### Estructura de Directorios
-```
+
+```text
 server/
 ├── config/              # Configuraciones (DB, Redis, Ollama, BullMQ)
 ├── domains/             # Módulos por dominio de negocio
@@ -189,6 +203,7 @@ server/
 ```
 
 ### Patrones de Diseño
+
 - **Separación por Dominios**: Cada módulo es autocontenido
 - **Controller-Service Pattern**: Lógica separada en capas
 - **Middleware Pipeline**: Procesamiento secuencial de requests
@@ -234,6 +249,7 @@ RATE_LIMIT_MAX_REQUESTS=50
 ## 🧪 Testing
 
 ### Estructura de Tests
+
 ```bash
 server/tests/
 ├── auth/                # Tests de autenticación
@@ -243,6 +259,7 @@ server/tests/
 ```
 
 ### Comandos de Testing
+
 ```bash
 # Ejecutar todos los tests
 npm test
@@ -258,6 +275,7 @@ npm run test:coverage
 ## 📊 Monitoreo y Logging
 
 ### Health Check
+
 ```bash
 # Verificar estado del sistema
 curl http://localhost:3001/health
@@ -275,6 +293,7 @@ curl http://localhost:3001/health
 ```
 
 ### Logs
+
 - **Requests**: `logs/requests.log`
 - **Errores**: `logs/error.log`
 - **Aplicación**: `logs/server.log`
@@ -284,6 +303,7 @@ curl http://localhost:3001/health
 ### Problemas Comunes
 
 #### Base de datos no conecta
+
 ```bash
 # Verificar MySQL
 sudo service mysql status
@@ -293,6 +313,7 @@ node scripts/health-check.js
 ```
 
 #### Redis no disponible
+
 ```bash
 # Verificar Redis
 redis-cli ping
@@ -302,6 +323,7 @@ redis-server
 ```
 
 #### Ollama no responde
+
 ```bash
 # Verificar Ollama
 ollama list
@@ -311,6 +333,7 @@ ollama serve
 ```
 
 #### Puerto en uso
+
 ```bash
 # Encontrar proceso usando puerto 3001
 lsof -i :3001
@@ -322,6 +345,7 @@ PORT=3002
 ## 🔐 Seguridad
 
 ### Medidas Implementadas
+
 - **Helmet.js**: Headers de seguridad
 - **CORS**: Control de origenes
 - **Rate Limiting**: Límite de requests
@@ -330,6 +354,7 @@ PORT=3002
 - **Input Validation**: Validación de datos de entrada
 
 ### Recomendaciones de Producción
+
 1. Cambiar todos los secretos en `.env`
 2. Configurar HTTPS
 3. Implementar WAF (Web Application Firewall)
@@ -341,16 +366,19 @@ PORT=3002
 ### Próximos Pasos de Desarrollo
 
 1. **Implementar Controladores de Autenticación**
+
    - JWT generation/validation
    - Password reset flow
    - Email verification
 
 2. **Desarrollar Motor ETL**
+
    - Excel/CSV parsing
    - Data normalization
    - Business rules validation
 
 3. **Integrar Ollama para IA**
+
    - Document analysis
    - Image processing
    - Automated scoring
@@ -361,6 +389,7 @@ PORT=3002
    - Automated reminders
 
 ### Guías de Desarrollo
+
 - Seguir patrones de separación por dominios
 - Implementar tests para nuevas funcionalidades
 - Actualizar documentación Claude.md
@@ -369,6 +398,7 @@ PORT=3002
 ## 📞 Soporte
 
 Para problemas o preguntas:
+
 1. Verificar logs en `logs/`
 2. Ejecutar `npm run health`
 3. Consultar documentación Claude.md específica

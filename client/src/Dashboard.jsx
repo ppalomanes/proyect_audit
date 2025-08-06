@@ -76,7 +76,7 @@ const Dashboard = () => {
       title: 'Nueva Auditoría',
       description: 'Iniciar proceso de auditoría técnica',
       icon: DocumentCheckIcon,
-      color: 'from-blue-500 to-blue-600',
+      gradient: 'bg-gradient-blue',
       onClick: () => navigate('/auditorias/nueva'),
       available: true,
     },
@@ -84,7 +84,7 @@ const Dashboard = () => {
       title: 'Procesar ETL',
       description: 'Cargar y validar parque informático',
       icon: CogIcon,
-      color: 'from-purple-500 to-purple-600',
+      gradient: 'bg-gradient-purple',
       onClick: () => navigate('/etl'),
       available: true,
     },
@@ -92,7 +92,7 @@ const Dashboard = () => {
       title: 'Análisis IA',
       description: 'Evaluar documentos con IA local',
       icon: BeakerIcon,
-      color: 'from-green-500 to-green-600',
+      gradient: 'bg-gradient-green',
       onClick: () => navigate('/ia-scoring'),
       available: true,
     },
@@ -100,7 +100,7 @@ const Dashboard = () => {
       title: 'Chat Colaborativo',
       description: 'Comunicación con proveedores',
       icon: ChatBubbleLeftRightIcon,
-      color: 'from-pink-500 to-pink-600',
+      gradient: 'bg-gradient-pink',
       onClick: () => navigate('/chat'),
       available: true,
     },
@@ -115,29 +115,39 @@ const Dashboard = () => {
 
   const getStatusColor = (status) => {
     const colors = {
+      completed: 'text-green-500',
+      success: 'text-blue-500',
+      pending: 'text-yellow-500',
+      error: 'text-red-500',
+    };
+    return colors[status] || 'text-gray-500';
+  };
+
+  const getStatusBg = (status) => {
+    const colors = {
       completed: 'bg-green-500',
-      success: 'bg-blue-500',
+      success: 'bg-blue-500', 
       pending: 'bg-yellow-500',
       error: 'bg-red-500',
     };
     return colors[status] || 'bg-gray-500';
   };
 
-  const StatCard = ({ title, value, icon: Icon, trend, color }) => (
-    <div className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-xl p-6 transition-all duration-300 hover:bg-gray-800/60 hover:transform hover:scale-105 hover:shadow-2xl group">
+  const StatCard = ({ title, value, icon: Icon, trend, colorClass }) => (
+    <div className="bg-card hover-bg-card border border-primary rounded-xl p-6 transition-all duration-300 hover:transform hover:scale-105 card-shadow-lg interactive-card group">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-400 mb-1">{title}</p>
-          <p className="text-2xl font-bold text-white">{value}</p>
+          <p className="text-sm font-medium text-muted mb-1">{title}</p>
+          <p className="text-2xl font-bold text-primary">{value}</p>
           {trend && (
             <div className="flex items-center mt-2">
-              <ArrowTrendingUpIcon className="w-4 h-4 text-green-400 mr-1" />
-              <span className="text-xs text-green-400">{trend}</span>
+              <ArrowTrendingUpIcon className="w-4 h-4 text-green-500 mr-1" />
+              <span className="text-xs text-green-500">{trend}</span>
             </div>
           )}
         </div>
-        <div className={`p-3 rounded-lg ${color} bg-opacity-20 group-hover:bg-opacity-30 transition-all`}>
-          <Icon className={`w-6 h-6 ${color.replace('bg-', 'text-')}`} />
+        <div className={`p-3 rounded-lg bg-opacity-20 group-hover:bg-opacity-30 transition-all ${colorClass}`}>
+          <Icon className={`w-6 h-6 ${colorClass.replace('bg-', 'text-')}`} />
         </div>
       </div>
     </div>
@@ -146,14 +156,14 @@ const Dashboard = () => {
   const QuickActionCard = ({ action }) => (
     <div
       onClick={action.onClick}
-      className={`relative overflow-hidden bg-gradient-to-br ${action.color} rounded-xl p-6 text-white cursor-pointer transition-all duration-300 hover:transform hover:scale-105 hover:shadow-2xl ${
+      className={`relative overflow-hidden ${action.gradient} rounded-xl p-6 text-white cursor-pointer transition-all duration-300 hover:transform hover:scale-105 card-shadow-lg interactive-card ${
         action.available ? '' : 'opacity-50 cursor-not-allowed'
       }`}
     >
       <div className="relative z-10">
         <action.icon className="w-8 h-8 mb-4" />
         <h3 className="text-lg font-semibold mb-2">{action.title}</h3>
-        <p className="text-sm text-white/80">{action.description}</p>
+        <p className="text-sm text-white opacity-90">{action.description}</p>
       </div>
       <div className="absolute -top-4 -right-4 opacity-10">
         <action.icon className="w-24 h-24" />
@@ -164,42 +174,42 @@ const Dashboard = () => {
   const ActivityItem = ({ activity }) => {
     const Icon = activity.icon;
     return (
-      <div className="flex items-start space-x-4 p-4 rounded-lg hover:bg-gray-800/30 transition-all duration-200">
-        <div className={`p-2 rounded-lg ${getStatusColor(activity.status)} bg-opacity-20`}>
-          <Icon className={`w-5 h-5 ${getStatusColor(activity.status).replace('bg-', 'text-')}`} />
+      <div className="flex items-start space-x-4 p-4 rounded-lg hover-bg-card transition-all duration-200">
+        <div className={`p-2 rounded-lg bg-opacity-20 ${getStatusBg(activity.status)}`}>
+          <Icon className={`w-5 h-5 ${getStatusColor(activity.status)}`} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white">{activity.title}</p>
-          <p className="text-xs text-gray-400 mt-1">{activity.description}</p>
+          <p className="text-sm font-medium text-primary">{activity.title}</p>
+          <p className="text-xs text-muted mt-1">{activity.description}</p>
           <div className="flex items-center mt-2">
-            <ClockIcon className="w-3 h-3 text-gray-500 mr-1" />
-            <span className="text-xs text-gray-500">{activity.timestamp}</span>
+            <ClockIcon className="w-3 h-3 text-muted mr-1" />
+            <span className="text-xs text-muted">{activity.timestamp}</span>
           </div>
         </div>
-        <div className={`w-2 h-2 rounded-full ${getStatusColor(activity.status)}`} />
+        <div className={`w-2 h-2 rounded-full ${getStatusBg(activity.status)}`} />
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6">
+    <div className="min-h-screen bg-gradient-primary p-6 transition-theme">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">
+              <h1 className="text-3xl font-bold text-primary mb-2 transition-theme">
                 {getGreeting()}, {user?.nombres || 'Usuario'}! 👋
               </h1>
-              <p className="text-gray-400">
+              <p className="text-secondary transition-theme">
                 Bienvenido al Portal de Auditorías Técnicas
               </p>
               <div className="flex items-center mt-2">
-                <span className="px-3 py-1 text-xs font-medium bg-blue-500/20 text-blue-400 rounded-full">
+                <span className="px-3 py-1 text-xs font-medium badge-info rounded-full">
                   {user?.rol || 'Usuario'}
                 </span>
-                <span className="mx-2 text-gray-600">•</span>
-                <span className="text-sm text-gray-500">
+                <span className="mx-2 text-muted">•</span>
+                <span className="text-sm text-muted">
                   Última conexión: {new Date().toLocaleDateString()}
                 </span>
               </div>
@@ -207,12 +217,12 @@ const Dashboard = () => {
             <div className="flex space-x-3">
               <button
                 onClick={() => navigate('/auditorias/nueva')}
-                className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 hover:transform hover:scale-105 shadow-lg"
+                className="flex items-center px-4 py-2 bg-gradient-blue text-white rounded-lg hover:transform hover:scale-105 transition-all duration-300 card-shadow"
               >
                 <PlusIcon className="w-4 h-4 mr-2" />
                 Nueva Auditoría
               </button>
-              <button className="flex items-center px-4 py-2 bg-gray-800/50 border border-gray-700/50 text-gray-300 rounded-lg hover:bg-gray-700/50 transition-all duration-300">
+              <button className="flex items-center px-4 py-2 bg-secondary border border-primary text-secondary rounded-lg hover-bg-card transition-all duration-300">
                 <EyeIcon className="w-4 h-4 mr-2" />
                 Ver Todo
               </button>
@@ -227,28 +237,28 @@ const Dashboard = () => {
             value={stats.totalAuditorias}
             icon={DocumentCheckIcon}
             trend="+12% este mes"
-            color="bg-blue-500"
+            colorClass="bg-blue-500"
           />
           <StatCard
             title="ETL Procesados"
             value={stats.etlProcesados}
             icon={CogIcon}
             trend="+8% esta semana"
-            color="bg-purple-500"
+            colorClass="bg-purple-500"
           />
           <StatCard
             title="Análisis IA"
             value={stats.iaAnalisis}
             icon={BeakerIcon}
             trend="+24% este mes"
-            color="bg-green-500"
+            colorClass="bg-green-500"
           />
           <StatCard
             title="Usuarios Activos"
             value={stats.usuariosActivos}
             icon={UserGroupIcon}
             trend="+3 nuevos"
-            color="bg-pink-500"
+            colorClass="bg-pink-500"
           />
         </div>
 
@@ -257,8 +267,8 @@ const Dashboard = () => {
           {/* Quick Actions */}
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-white">⚡ Acciones Rápidas</h2>
-              <BoltIcon className="w-5 h-5 text-yellow-400" />
+              <h2 className="text-xl font-semibold text-primary transition-theme">⚡ Acciones Rápidas</h2>
+              <BoltIcon className="w-5 h-5 text-yellow-500" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {quickActions.map((action, index) => (
@@ -269,10 +279,10 @@ const Dashboard = () => {
 
           {/* Recent Activity */}
           <div className="lg:col-span-1">
-            <div className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 rounded-xl p-6">
+            <div className="glass-effect rounded-xl p-6 transition-theme">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-white">🕐 Actividad Reciente</h2>
-                <span className="text-xs text-gray-400 px-2 py-1 bg-gray-700/50 rounded-full">
+                <h2 className="text-xl font-semibold text-primary transition-theme">🕐 Actividad Reciente</h2>
+                <span className="text-xs text-muted px-2 py-1 bg-accent rounded-full">
                   Tiempo real
                 </span>
               </div>
@@ -281,7 +291,7 @@ const Dashboard = () => {
                   <ActivityItem key={activity.id} activity={activity} />
                 ))}
               </div>
-              <button className="w-full mt-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
+              <button className="w-full mt-4 py-2 text-sm text-muted hover:text-primary transition-colors">
                 Ver toda la actividad →
               </button>
             </div>
@@ -289,36 +299,36 @@ const Dashboard = () => {
         </div>
 
         {/* Progress Overview */}
-        <div className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 rounded-xl p-6 mb-8">
-          <h2 className="text-xl font-semibold text-white mb-6 flex items-center">
+        <div className="glass-effect rounded-xl p-6 mb-8 transition-theme">
+          <h2 className="text-xl font-semibold text-primary mb-6 flex items-center transition-theme">
             📊 Progreso del Sistema
-            <span className="ml-2 text-xs text-green-400 px-2 py-1 bg-green-500/20 rounded-full">
+            <span className="ml-2 text-xs badge-success px-2 py-1 rounded-full">
               Operativo
             </span>
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-4">
+            <div className="text-center p-4 bg-card rounded-lg transition-theme">
               <div className="text-3xl mb-2">✅</div>
-              <div className="text-lg font-semibold text-white mb-1">Backend</div>
-              <div className="text-sm text-gray-400">100% Funcional</div>
-              <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
-                <div className="bg-green-500 h-2 rounded-full w-full"></div>
+              <div className="text-lg font-semibold text-primary mb-1 transition-theme">Backend</div>
+              <div className="text-sm text-muted transition-theme">100% Funcional</div>
+              <div className="w-full bg-accent rounded-full h-2 mt-2">
+                <div className="bg-green-500 h-2 rounded-full w-full transition-all"></div>
               </div>
             </div>
-            <div className="text-center p-4">
+            <div className="text-center p-4 bg-card rounded-lg transition-theme">
               <div className="text-3xl mb-2">🔄</div>
-              <div className="text-lg font-semibold text-white mb-1">ETL Engine</div>
-              <div className="text-sm text-gray-400">Operativo</div>
-              <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
-                <div className="bg-blue-500 h-2 rounded-full w-full"></div>
+              <div className="text-lg font-semibold text-primary mb-1 transition-theme">ETL Engine</div>
+              <div className="text-sm text-muted transition-theme">Operativo</div>
+              <div className="w-full bg-accent rounded-full h-2 mt-2">
+                <div className="bg-blue-500 h-2 rounded-full w-full transition-all"></div>
               </div>
             </div>
-            <div className="text-center p-4">
+            <div className="text-center p-4 bg-card rounded-lg transition-theme">
               <div className="text-3xl mb-2">🤖</div>
-              <div className="text-lg font-semibold text-white mb-1">IA Local</div>
-              <div className="text-sm text-gray-400">Ollama Ready</div>
-              <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
-                <div className="bg-purple-500 h-2 rounded-full w-4/5"></div>
+              <div className="text-lg font-semibold text-primary mb-1 transition-theme">IA Local</div>
+              <div className="text-sm text-muted transition-theme">Ollama Ready</div>
+              <div className="w-full bg-accent rounded-full h-2 mt-2">
+                <div className="bg-purple-500 h-2 rounded-full w-4/5 transition-all"></div>
               </div>
             </div>
           </div>
@@ -326,64 +336,64 @@ const Dashboard = () => {
 
         {/* System Status */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-              <CpuChipIcon className="w-5 h-5 mr-2 text-blue-400" />
+          <div className="glass-effect rounded-xl p-6 transition-theme">
+            <h3 className="text-lg font-semibold text-primary mb-4 flex items-center transition-theme">
+              <CpuChipIcon className="w-5 h-5 mr-2 text-blue-500" />
               Estado del Sistema
             </h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">API Backend</span>
+                <span className="text-sm text-secondary transition-theme">API Backend</span>
                 <div className="flex items-center">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                  <span className="text-xs text-green-400">Online</span>
+                  <span className="text-xs text-green-500">Online</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Base de Datos</span>
+                <span className="text-sm text-secondary transition-theme">Base de Datos</span>
                 <div className="flex items-center">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                  <span className="text-xs text-green-400">Conectada</span>
+                  <span className="text-xs text-green-500">Conectada</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Ollama IA</span>
+                <span className="text-sm text-secondary transition-theme">Ollama IA</span>
                 <div className="flex items-center">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                  <span className="text-xs text-green-400">Disponible</span>
+                  <span className="text-xs text-green-500">Disponible</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">ETL Processor</span>
+                <span className="text-sm text-secondary transition-theme">ETL Processor</span>
                 <div className="flex items-center">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                  <span className="text-xs text-green-400">Operativo</span>
+                  <span className="text-xs text-green-500">Operativo</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-              <ChartBarIcon className="w-5 h-5 mr-2 text-purple-400" />
+          <div className="glass-effect rounded-xl p-6 transition-theme">
+            <h3 className="text-lg font-semibold text-primary mb-4 flex items-center transition-theme">
+              <ChartBarIcon className="w-5 h-5 mr-2 text-purple-500" />
               Métricas Rápidas
             </h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Auditorías Completadas</span>
-                <span className="text-sm font-medium text-white">{stats.completadas}/{stats.totalAuditorias}</span>
+                <span className="text-sm text-secondary transition-theme">Auditorías Completadas</span>
+                <span className="text-sm font-medium text-primary transition-theme">{stats.completadas}/{stats.totalAuditorias}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Tasa de Éxito ETL</span>
-                <span className="text-sm font-medium text-green-400">94.2%</span>
+                <span className="text-sm text-secondary transition-theme">Tasa de Éxito ETL</span>
+                <span className="text-sm font-medium text-green-500">94.2%</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Tiempo Prom. Proceso</span>
-                <span className="text-sm font-medium text-blue-400">3.4 min</span>
+                <span className="text-sm text-secondary transition-theme">Tiempo Prom. Proceso</span>
+                <span className="text-sm font-medium text-blue-500">3.4 min</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Uptime del Sistema</span>
-                <span className="text-sm font-medium text-green-400">99.8%</span>
+                <span className="text-sm text-secondary transition-theme">Uptime del Sistema</span>
+                <span className="text-sm font-medium text-green-500">99.8%</span>
               </div>
             </div>
           </div>
@@ -391,11 +401,11 @@ const Dashboard = () => {
 
         {/* Footer Info */}
         <div className="mt-8 text-center">
-          <div className="bg-gray-800/20 backdrop-blur-xl border border-gray-700/30 rounded-xl p-4">
-            <div className="text-sm text-gray-400">
+          <div className="glass-effect rounded-xl p-4 transition-theme">
+            <div className="text-sm text-muted transition-theme">
               Portal de Auditorías Técnicas v1.0.0 • 
               Desarrollado con React + Node.js + MySQL + Ollama IA • 
-              <span className="text-green-400">Sistema 100% Operativo</span>
+              <span className="text-green-500">Sistema 100% Operativo</span>
             </div>
           </div>
         </div>

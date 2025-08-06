@@ -5,7 +5,37 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Portal de Auditorías Técnicas</title>
+    
+    <!-- Fuentes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Script para prevenir flash de tema - CRÍTICO -->
+    <script>
+      (function() {
+        const getThemePreference = () => {
+          const stored = localStorage.getItem('theme-storage');
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              if (parsed.state?.theme && ['light', 'dark', 'corporate'].includes(parsed.state.theme)) {
+                return parsed.state.theme;
+              }
+            } catch (e) {
+              console.warn('Error parsing stored theme:', e);
+            }
+          }
+          
+          // Fallback a preferencia del sistema
+          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        };
+        
+        const theme = getThemePreference();
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.classList.add(theme);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

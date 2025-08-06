@@ -1,364 +1,346 @@
+// /server/domains/dashboards/aggregators/metrics-aggregator.js
+// Agregador de métricas principales - Portal de Auditorías Técnicas
+
 /**
- * Agregador principal de métricas para dashboards
- * Coordina la agregación de datos de múltiples módulos y calcula tendencias
+ * Agregador centralizado de métricas y KPIs del sistema
+ * Consolida datos de auditorías, ETL, IA y jobs para dashboards ejecutivos
  */
 class MetricsAggregator {
   
   constructor() {
-    this.auditoriasAggregator = require('./auditorias-aggregator');
+    this.cache = new Map();
+    this.cacheTimeout = 5 * 60 * 1000; // 5 minutos
   }
-  
+
   /**
-   * Calcular tendencias del sistema basadas en datos históricos
+   * Obtener métricas ejecutivas principales
    */
-  async calculateTrends(periodo = '30d') {
+  async getExecutiveMetrics(periodo = '30d') {
+    const cacheKey = `executive_metrics_${periodo}`;
+    
+    // Verificar cache
+    if (this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      if (Date.now() - cached.timestamp < this.cacheTimeout) {
+        return cached.data;
+      }
+    }
+
     try {
-      console.log(`📈 Calculando tendencias del sistema (${periodo})`);
+      console.log(`📊 Calculando métricas ejecutivas para período: ${periodo}`);
       
-      // Obtener datos históricos por mes para los últimos períodos
-      const tendencias = await this.getHistoricalTrends(periodo);
+      // Obtener datos base (mock por ahora, en producción usar modelos reales)
+      const auditoriasData = await this.getAuditoriasMetrics(periodo);
+      const etlData = await this.getETLMetrics(periodo);
+      const iaData = await this.getIAMetrics(periodo);
+      const jobsData = await this.getJobsMetrics(periodo);
       
-      // Calcular tendencias específicas
-      const auditoriasTrend = await this.calculateAuditoriasTrend(periodo);
-      const qualityTrend = await this.calculateQualityTrend(periodo);
-      const timeTrend = await this.calculateTimeTrend(periodo);
-      
-      // Generar proyecciones
-      const proyecciones = this.generateProjections({
-        auditoriasTrend,
-        qualityTrend,
-        timeTrend
-      });
-      
-      // Generar insights automáticos
-      const insights = this.generateInsights({
-        auditoriasTrend,
-        qualityTrend,
-        timeTrend
-      });
-      
-      return {
-        auditorias_monthly: auditoriasTrend,
-        quality_trend: qualityTrend,
-        time_trend: timeTrend,
-        proyecciones,
-        insights,
-        timestamp: new Date().toISOString()
+      const metrics = {
+        periodo,
+        timestamp: new Date().toISOString(),
+        
+        // KPIs Principales
+        kpis: {
+          auditorias_completadas: auditoriasData.completadas,
+          auditorias_en_progreso: auditoriasData.en_progreso,
+          tasa_cumplimiento_promedio: auditoriasData.tasa_cumplimiento,
+          tiempo_promedio_auditoria: auditoriasData.tiempo_promedio,
+          proveedores_activos: auditoriasData.proveedores_unicos,
+          sitios_auditados: auditoriasData.sitios_unicos
+        },
+        
+        // Métricas de Procesamiento
+        procesamiento: {
+          archivos_etl_procesados: etlData.archivos_procesados,
+          registros_parque_procesados: etlData.registros_procesados,
+          tasa_exito_etl: etlData.tasa_exito,
+          analisis_ia_realizados: iaData.analisis_realizados,
+          score_promedio_ia: iaData.score_promedio,
+          jobs_completados: jobsData.completados,
+          jobs_fallidos: jobsData.fallidos
+        },
+        
+        // Tendencias
+        tendencias: {
+          auditorias_por_mes: await this.getAuditoriasTrend(periodo),
+          cumplimiento_por_mes: await this.getCumplimientoTrend(periodo),
+          performance_etl: await this.getETLPerformanceTrend(periodo),
+          accuracy_ia: await this.getIAAccuracyTrend(periodo)
+        },
+        
+        // Distribuciones
+        distribuciones: {
+          por_proveedor: await this.getDistribucionProveedores(periodo),
+          por_tipo_incumplimiento: await this.getDistribucionIncumplimientos(periodo),
+          por_categoria_hardware: await this.getDistribucionHardware(periodo)
+        },
+        
+        // Alertas y Notificaciones
+        alertas: await this.getAlertasActivas(),
+        
+        // Comparativas
+        comparativa_periodo_anterior: await this.getComparativaPeriodoAnterior(periodo)
       };
       
+      // Guardar en cache
+      this.cache.set(cacheKey, {
+        data: metrics,
+        timestamp: Date.now()
+      });
+      
+      return metrics;
+      
     } catch (error) {
-      console.error('❌ Error calculando tendencias:', error);
+      console.error('❌ Error calculando métricas ejecutivas:', error.message);
       throw error;
     }
   }
-  
+
   /**
-   * Obtener datos históricos por período
+   * Obtener métricas de auditorías
    */
-  async getHistoricalTrends(periodo) {
-    try {
-      const meses = this.getMonthsArray(periodo);
-      const trends = [];
-      
-      for (const mes of meses) {
-        const stats = await this.auditoriasAggregator.getExecutiveStats(`${mes.days}d`);
-        trends.push({
-          mes: mes.label,
-          auditorias: stats.completadas,
-          score_promedio: stats.score_promedio,
-          tiempo_promedio: stats.tiempo_promedio,
-          compliance_rate: stats.compliance_rate
-        });
-      }
-      
-      return trends;
-      
-    } catch (error) {
-      console.error('❌ Error obteniendo tendencias históricas:', error);
-      return [];
-    }
-  }
-  
-  /**
-   * Calcular tendencia de auditorías completadas
-   */
-  async calculateAuditoriasTrend(periodo) {
-    try {
-      const meses = this.getMonthsArray(periodo);
-      const trend = [];
-      
-      for (const mes of meses) {
-        const stats = await this.auditoriasAggregator.getExecutiveStats(`${mes.days}d`);
-        trend.push({
-          periodo: mes.label,
-          valor: stats.completadas,
-          fecha: mes.fecha
-        });
-      }
-      
-      return trend;
-      
-    } catch (error) {
-      console.error('❌ Error calculando tendencia auditorías:', error);
-      return [];
-    }
-  }
-  
-  /**
-   * Calcular tendencia de calidad (scores)
-   */
-  async calculateQualityTrend(periodo) {
-    try {
-      const meses = this.getMonthsArray(periodo);
-      const trend = [];
-      
-      for (const mes of meses) {
-        const stats = await this.auditoriasAggregator.getExecutiveStats(`${mes.days}d`);
-        trend.push({
-          periodo: mes.label,
-          valor: stats.score_promedio,
-          fecha: mes.fecha
-        });
-      }
-      
-      return trend;
-      
-    } catch (error) {
-      console.error('❌ Error calculando tendencia calidad:', error);
-      return [];
-    }
-  }
-  
-  /**
-   * Calcular tendencia de tiempos de auditoría
-   */
-  async calculateTimeTrend(periodo) {
-    try {
-      const meses = this.getMonthsArray(periodo);
-      const trend = [];
-      
-      for (const mes of meses) {
-        const stats = await this.auditoriasAggregator.getExecutiveStats(`${mes.days}d`);
-        trend.push({
-          periodo: mes.label,
-          valor: stats.tiempo_promedio,
-          fecha: mes.fecha
-        });
-      }
-      
-      return trend;
-      
-    } catch (error) {
-      console.error('❌ Error calculando tendencia tiempos:', error);
-      return [];
-    }
-  }
-  
-  /**
-   * Generar proyecciones basadas en tendencias
-   */
-  generateProjections(trends) {
-    try {
-      // Proyección simple basada en tendencia lineal
-      const auditoriaProjection = this.calculateLinearProjection(trends.auditoriasTrend);
-      const qualityProjection = this.calculateLinearProjection(trends.qualityTrend);
-      
-      return {
-        next_month: {
-          auditorias_estimadas: Math.round(auditoriaProjection),
-          score_estimado: Math.round(qualityProjection * 10) / 10,
-          confianza: this.calculateConfidence(trends.auditoriasTrend)
-        },
-        next_quarter: {
-          auditorias_estimadas: Math.round(auditoriaProjection * 3),
-          score_estimado: Math.round(qualityProjection * 10) / 10,
-          confianza: this.calculateConfidence(trends.auditoriasTrend) * 0.8
-        }
-      };
-      
-    } catch (error) {
-      console.error('❌ Error generando proyecciones:', error);
-      return {
-        next_month: { auditorias_estimadas: 0, score_estimado: 0, confianza: 0 },
-        next_quarter: { auditorias_estimadas: 0, score_estimado: 0, confianza: 0 }
-      };
-    }
-  }
-  
-  /**
-   * Generar insights automáticos
-   */
-  generateInsights(trends) {
-    const insights = [];
-    
-    try {
-      // Analizar tendencia de auditorías
-      const auditoriasTrend = this.analyzeTrendDirection(trends.auditoriasTrend);
-      if (auditoriasTrend.direction === 'up') {
-        insights.push({
-          tipo: 'positivo',
-          mensaje: `Incremento del ${auditoriasTrend.change}% en auditorías completadas`,
-          impacto: 'alto'
-        });
-      } else if (auditoriasTrend.direction === 'down') {
-        insights.push({
-          tipo: 'alerta',
-          mensaje: `Disminución del ${Math.abs(auditoriasTrend.change)}% en auditorías completadas`,
-          impacto: 'alto'
-        });
-      }
-      
-      // Analizar tendencia de calidad
-      const qualityTrend = this.analyzeTrendDirection(trends.qualityTrend);
-      if (qualityTrend.direction === 'up') {
-        insights.push({
-          tipo: 'positivo',
-          mensaje: `Mejora del ${qualityTrend.change}% en score de calidad`,
-          impacto: 'medio'
-        });
-      } else if (qualityTrend.direction === 'down') {
-        insights.push({
-          tipo: 'critico',
-          mensaje: `Deterioro del ${Math.abs(qualityTrend.change)}% en score de calidad`,
-          impacto: 'critico'
-        });
-      }
-      
-      // Analizar tendencia de tiempos
-      const timeTrend = this.analyzeTrendDirection(trends.timeTrend);
-      if (timeTrend.direction === 'down') {
-        insights.push({
-          tipo: 'positivo',
-          mensaje: `Reducción del ${Math.abs(timeTrend.change)}% en tiempo promedio de auditoría`,
-          impacto: 'medio'
-        });
-      } else if (timeTrend.direction === 'up') {
-        insights.push({
-          tipo: 'alerta',
-          mensaje: `Incremento del ${timeTrend.change}% en tiempo promedio de auditoría`,
-          impacto: 'medio'
-        });
-      }
-      
-    } catch (error) {
-      console.error('❌ Error generando insights:', error);
-    }
-    
-    return insights;
-  }
-  
-  /**
-   * Health check del agregador principal
-   */
-  async healthCheck() {
-    try {
-      await this.auditoriasAggregator.healthCheck();
-      return { status: 'healthy' };
-    } catch (error) {
-      throw new Error(`Metrics aggregator no disponible: ${error.message}`);
-    }
-  }
-  
-  // =================== MÉTODOS AUXILIARES ===================
-  
-  /**
-   * Obtener array de meses para análisis de tendencias
-   */
-  getMonthsArray(periodo) {
-    const meses = [];
-    const today = new Date();
-    
-    let numMeses = 6; // Default
-    switch (periodo) {
-      case '30d':
-        numMeses = 6;
-        break;
-      case '90d':
-        numMeses = 6;
-        break;
-      case '1y':
-        numMeses = 12;
-        break;
-    }
-    
-    for (let i = numMeses - 1; i >= 0; i--) {
-      const fecha = new Date(today);
-      fecha.setMonth(fecha.getMonth() - i);
-      
-      meses.push({
-        label: fecha.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }),
-        fecha: fecha.toISOString(),
-        days: 30 // Aproximado para cálculos
-      });
-    }
-    
-    return meses;
-  }
-  
-  /**
-   * Calcular proyección lineal simple
-   */
-  calculateLinearProjection(trendData) {
-    if (!trendData || trendData.length < 2) return 0;
-    
-    const valores = trendData.map(t => t.valor).filter(v => v !== null && v !== undefined);
-    if (valores.length < 2) return valores[valores.length - 1] || 0;
-    
-    // Tendencia lineal simple: diferencia entre último y penúltimo valor
-    const ultimoValor = valores[valores.length - 1];
-    const penultimoValor = valores[valores.length - 2];
-    const tendencia = ultimoValor - penultimoValor;
-    
-    return ultimoValor + tendencia;
-  }
-  
-  /**
-   * Calcular nivel de confianza basado en consistencia de datos
-   */
-  calculateConfidence(trendData) {
-    if (!trendData || trendData.length < 3) return 0.5;
-    
-    const valores = trendData.map(t => t.valor).filter(v => v !== null && v !== undefined);
-    if (valores.length < 3) return 0.5;
-    
-    // Calcular variabilidad (menor variabilidad = mayor confianza)
-    const promedio = valores.reduce((sum, val) => sum + val, 0) / valores.length;
-    const varianza = valores.reduce((sum, val) => sum + Math.pow(val - promedio, 2), 0) / valores.length;
-    const coeficienteVariacion = Math.sqrt(varianza) / promedio;
-    
-    // Convertir a score de confianza (0-1)
-    return Math.max(0.1, Math.min(0.95, 1 - coeficienteVariacion));
-  }
-  
-  /**
-   * Analizar dirección de tendencia
-   */
-  analyzeTrendDirection(trendData) {
-    if (!trendData || trendData.length < 2) {
-      return { direction: 'stable', change: 0 };
-    }
-    
-    const valores = trendData.map(t => t.valor).filter(v => v !== null && v !== undefined);
-    if (valores.length < 2) {
-      return { direction: 'stable', change: 0 };
-    }
-    
-    const primerValor = valores[0];
-    const ultimoValor = valores[valores.length - 1];
-    
-    if (primerValor === 0) {
-      return { direction: 'stable', change: 0 };
-    }
-    
-    const cambio = ((ultimoValor - primerValor) / primerValor) * 100;
-    
-    let direction = 'stable';
-    if (cambio > 5) direction = 'up';
-    else if (cambio < -5) direction = 'down';
-    
+  async getAuditoriasMetrics(periodo) {
+    // Mock data - en producción consultar modelos reales
     return {
-      direction,
-      change: Math.round(Math.abs(cambio) * 10) / 10
+      completadas: 45,
+      en_progreso: 12,
+      pendientes: 8,
+      tasa_cumplimiento: 78.5,
+      tiempo_promedio: '14 días',
+      proveedores_unicos: 23,
+      sitios_unicos: 89,
+      por_etapa: {
+        'Carga Documentos': 8,
+        'Validación': 4,
+        'Análisis IA': 3,
+        'Revisión Auditor': 5,
+        'Finalizada': 45
+      }
+    };
+  }
+
+  /**
+   * Obtener métricas de ETL
+   */
+  async getETLMetrics(periodo) {
+    return {
+      archivos_procesados: 156,
+      registros_procesados: 12840,
+      tasa_exito: 94.2,
+      tiempo_promedio_procesamiento: '3.2 min',
+      errores_comunes: [
+        { tipo: 'Formato RAM inválido', count: 23 },
+        { tipo: 'OS no soportado', count: 18 },
+        { tipo: 'Campo hostname vacío', count: 15 }
+      ]
+    };
+  }
+
+  /**
+   * Obtener métricas de IA
+   */
+  async getIAMetrics(periodo) {
+    return {
+      analisis_realizados: 234,
+      score_promedio: 82.3,
+      tiempo_promedio_analisis: '2.8s',
+      por_tipo: {
+        'documentos': 156,
+        'imagenes': 45,
+        'scoring_parque': 33
+      },
+      accuracy_vs_auditor: 87.2
+    };
+  }
+
+  /**
+   * Obtener métricas de jobs
+   */
+  async getJobsMetrics(periodo) {
+    return {
+      completados: 1250,
+      fallidos: 78,
+      en_curso: 15,
+      tasa_exito: 94.1,
+      tiempo_promedio_ejecucion: '1.4 min'
+    };
+  }
+
+  /**
+   * Obtener tendencia de auditorías
+   */
+  async getAuditoriasTrend(periodo) {
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'];
+    return meses.map(mes => ({
+      mes,
+      auditorias: Math.floor(Math.random() * 20) + 30,
+      completadas: Math.floor(Math.random() * 15) + 25,
+      cumplimiento_promedio: Math.floor(Math.random() * 20) + 70
+    }));
+  }
+
+  /**
+   * Obtener tendencia de cumplimiento
+   */
+  async getCumplimientoTrend(periodo) {
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'];
+    return meses.map(mes => ({
+      mes,
+      cumplimiento: Math.floor(Math.random() * 15) + 75,
+      incumplimientos_criticos: Math.floor(Math.random() * 10) + 5,
+      incumplimientos_menores: Math.floor(Math.random() * 20) + 15
+    }));
+  }
+
+  /**
+   * Obtener tendencia de performance ETL
+   */
+  async getETLPerformanceTrend(periodo) {
+    const semanas = ['S1', 'S2', 'S3', 'S4'];
+    return semanas.map(semana => ({
+      semana,
+      archivos_procesados: Math.floor(Math.random() * 20) + 30,
+      tiempo_promedio_ms: Math.floor(Math.random() * 2000) + 3000,
+      tasa_exito: Math.floor(Math.random() * 10) + 90
+    }));
+  }
+
+  /**
+   * Obtener tendencia de accuracy IA
+   */
+  async getIAAccuracyTrend(periodo) {
+    const semanas = ['S1', 'S2', 'S3', 'S4'];
+    return semanas.map(semana => ({
+      semana,
+      accuracy_documentos: Math.floor(Math.random() * 10) + 85,
+      accuracy_imagenes: Math.floor(Math.random() * 8) + 80,
+      accuracy_scoring: Math.floor(Math.random() * 12) + 82
+    }));
+  }
+
+  /**
+   * Obtener distribución por proveedores
+   */
+  async getDistribucionProveedores(periodo) {
+    const proveedores = ['Proveedor A', 'Proveedor B', 'Proveedor C', 'Proveedor D'];
+    return proveedores.map(proveedor => ({
+      proveedor,
+      auditorias: Math.floor(Math.random() * 15) + 5,
+      cumplimiento_promedio: Math.floor(Math.random() * 20) + 70,
+      sitios: Math.floor(Math.random() * 20) + 10
+    }));
+  }
+
+  /**
+   * Obtener distribución de incumplimientos
+   */
+  async getDistribucionIncumplimientos(periodo) {
+    return [
+      { categoria: 'Hardware', count: 45, porcentaje: 32.1 },
+      { categoria: 'Sistema Operativo', count: 38, porcentaje: 27.1 },
+      { categoria: 'Conectividad', count: 28, porcentaje: 20.0 },
+      { categoria: 'Software', count: 18, porcentaje: 12.9 },
+      { categoria: 'Seguridad', count: 11, porcentaje: 7.9 }
+    ];
+  }
+
+  /**
+   * Obtener distribución de hardware
+   */
+  async getDistribucionHardware(periodo) {
+    return {
+      cpu: {
+        intel: { count: 1240, porcentaje: 68.2 },
+        amd: { count: 578, porcentaje: 31.8 }
+      },
+      ram: {
+        '8gb': { count: 456, porcentaje: 25.1 },
+        '16gb': { count: 1025, porcentaje: 56.4 },
+        '32gb': { count: 337, porcentaje: 18.5 }
+      },
+      disco: {
+        hdd: { count: 234, porcentaje: 12.9 },
+        ssd: { count: 1584, porcentaje: 87.1 }
+      }
+    };
+  }
+
+  /**
+   * Obtener alertas activas
+   */
+  async getAlertasActivas() {
+    return [
+      {
+        id: 'alert_001',
+        tipo: 'critica',
+        titulo: 'Alto porcentaje de incumplimientos en RAM',
+        descripcion: 'El 15% de equipos no cumple RAM mínima de 16GB',
+        afectados: 156,
+        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 'alert_002',
+        tipo: 'advertencia',
+        titulo: 'Demora en procesamiento ETL',
+        descripcion: 'Tiempo promedio de ETL aumentó 25% esta semana',
+        afectados: 12,
+        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()
+      }
+    ];
+  }
+
+  /**
+   * Obtener comparativa con período anterior
+   */
+  async getComparativaPeriodoAnterior(periodo) {
+    return {
+      auditorias: {
+        actual: 45,
+        anterior: 38,
+        cambio: '+18.4%',
+        tendencia: 'up'
+      },
+      cumplimiento: {
+        actual: 78.5,
+        anterior: 76.2,
+        cambio: '+3.0%',
+        tendencia: 'up'
+      },
+      tiempo_promedio: {
+        actual: 14,
+        anterior: 16,
+        cambio: '-12.5%',
+        tendencia: 'up' // Menos tiempo es mejor
+      }
+    };
+  }
+
+  /**
+   * Limpiar cache de métricas
+   */
+  clearCache(patron = null) {
+    if (patron) {
+      for (const key of this.cache.keys()) {
+        if (key.includes(patron)) {
+          this.cache.delete(key);
+        }
+      }
+    } else {
+      this.cache.clear();
+    }
+    
+    console.log(`🧹 Cache de métricas limpiado${patron ? ` (patrón: ${patron})` : ' (completo)'}`);
+  }
+
+  /**
+   * Obtener estadísticas del cache
+   */
+  getCacheStats() {
+    return {
+      entradas_total: this.cache.size,
+      timeout_configurado: this.cacheTimeout,
+      memoria_aproximada: JSON.stringify([...this.cache.values()]).length,
+      keys_activos: [...this.cache.keys()]
     };
   }
 }

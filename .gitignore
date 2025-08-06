@@ -162,3 +162,31 @@ EMERGENCY_BACKUP/
 analyze-orphans.js
 cleanup-*.js
 workspace-cleanup.js
+
+# Environment variables (SEGURIDAD)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.secured
+*/.env
+*/.env.local
+
+# Archivos de limpieza
+CLEANUP_BACKUP/
+CLEANUP_MASSIVE/
+CLEANUP_TEMP/
+CORRECTIONS_BACKUP_*/
+cleanup-*.json
+*.bat.backup
+
+# Logs
+*.log
+logs/
+
+# Archivos temporales
+temp/
+tmp/
+*.tmp
+scripts_temp/

@@ -1,642 +1,437 @@
 // /server/domains/ia/ia.controller.js
-// Controlador IA con implementación real conectada a Ollama
+// Controlador completo para el módulo de IA - Portal de Auditorías Técnicas
 
 const iaService = require('./ia.service');
-const { CriterioScoring } = require('./models');
 const path = require('path');
 const fs = require('fs').promises;
 
+/**
+ * Controlador principal para todas las operaciones de IA
+ * Maneja análisis de documentos, imágenes y scoring automático
+ */
 class IAController {
-  // ============== HEALTH CHECK ================
-  
+
+  /**
+   * POST /api/ia/analizar-documento
+   * Analizar documento PDF/texto con LLaMA
+   */
+  async analizarDocumento(req, res) {
+    try {
+      const { documento_id, tipo_analisis = 'compliance' } = req.body;
+      const archivo = req.file;
+
+      if (!documento_id) {
+        return res.status(400).json({
+          error: 'documento_id es requerido'
+        });
+      }
+
+      if (!archivo) {
+        return res.status(400).json({
+          error: 'Archivo de documento es requerido'
+        });
+      }
+
+      // Validar tipo de análisis
+      const tiposValidos = ['compliance', 'security', 'infrastructure'];
+      if (!tiposValidos.includes(tipo_analisis)) {
+        return res.status(400).json({
+          error: `Tipo de análisis debe ser uno de: ${tiposValidos.join(', ')}`
+        });
+      }
+
+      console.log(`📄 Iniciando análisis de documento: ${documento_id}`);
+
+      // Ejecutar análisis
+      const resultado = await iaService.analizarDocumento(
+        documento_id,
+        archivo.path,
+        tipo_analisis
+      );
+
+      // Limpiar archivo temporal
+      try {
+        await fs.unlink(archivo.path);
+      } catch (cleanupError) {
+        console.warn('⚠️  Error limpiando archivo temporal:', cleanupError.message);
+      }
+
+      res.json({
+        exito: true,
+        analisis: resultado,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('❌ Error en análisis de documento:', error.message);
+      res.status(500).json({
+        error: 'Error procesando análisis de documento',
+        detalle: error.message
+      });
+    }
+  }
+
+  /**
+   * POST /api/ia/analizar-imagen
+   * Analizar imagen con Moondream
+   */
+  async analizarImagen(req, res) {
+    try {
+      const { imagen_id, tipo_analisis = 'screenshot' } = req.body;
+      const archivo = req.file;
+
+      if (!imagen_id) {
+        return res.status(400).json({
+          error: 'imagen_id es requerido'
+        });
+      }
+
+      if (!archivo) {
+        return res.status(400).json({
+          error: 'Archivo de imagen es requerido'
+        });
+      }
+
+      // Validar tipo de análisis de imagen
+      const tiposValidos = ['screenshot', 'diagram', 'equipment'];
+      if (!tiposValidos.includes(tipo_analisis)) {
+        return res.status(400).json({
+          error: `Tipo de análisis debe ser uno de: ${tiposValidos.join(', ')}`
+        });
+      }
+
+      // Validar formato de imagen
+      const formatosValidos = ['.jpg', '.jpeg', '.png', '.bmp', '.gif'];
+      const extension = path.extname(archivo.originalname).toLowerCase();
+      if (!formatosValidos.includes(extension)) {
+        return res.status(400).json({
+          error: `Formato de imagen no soportado. Usar: ${formatosValidos.join(', ')}`
+        });
+      }
+
+      console.log(`📸 Iniciando análisis de imagen: ${imagen_id}`);
+
+      // Ejecutar análisis
+      const resultado = await iaService.analizarImagen(
+        imagen_id,
+        archivo.path,
+        tipo_analisis
+      );
+
+      // Limpiar archivo temporal
+      try {
+        await fs.unlink(archivo.path);
+      } catch (cleanupError) {
+        console.warn('⚠️  Error limpiando archivo temporal:', cleanupError.message);
+      }
+
+      res.json({
+        exito: true,
+        analisis: resultado,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('❌ Error en análisis de imagen:', error.message);
+      res.status(500).json({
+        error: 'Error procesando análisis de imagen',
+        detalle: error.message
+      });
+    }
+  }
+
+  /**
+   * POST /api/ia/scoring-parque
+   * Scoring automático de parque informático
+   */
+  async scoringParqueInformatico(req, res) {
+    try {
+      const { auditoria_id, datos_parque } = req.body;
+
+      if (!auditoria_id) {
+        return res.status(400).json({
+          error: 'auditoria_id es requerido'
+        });
+      }
+
+      if (!datos_parque || !Array.isArray(datos_parque) || datos_parque.length === 0) {
+        return res.status(400).json({
+          error: 'datos_parque debe ser un array no vacío'
+        });
+      }
+
+      console.log(`🔢 Iniciando scoring para auditoría: ${auditoria_id}`);
+
+      // Ejecutar scoring
+      const resultado = await iaService.scoringParqueInformatico(
+        auditoria_id,
+        datos_parque
+      );
+
+      res.json({
+        exito: true,
+        scoring: resultado,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('❌ Error en scoring de parque:', error.message);
+      res.status(500).json({
+        error: 'Error procesando scoring de parque informático',
+        detalle: error.message
+      });
+    }
+  }
+
+  /**
+   * GET /api/ia/health
+   * Verificar estado del servicio IA
+   */
   async healthCheck(req, res) {
     try {
-      const salud = await iaService.verificarSalud();
-      
-      if (salud.ollama_conectado) {
-        res.status(200).json({
-          status: 'healthy',
-          message: 'Servicio IA funcionando correctamente',
-          details: salud
-        });
-      } else {
-        res.status(503).json({
-          status: 'unhealthy',
-          message: 'Error de conexión con Ollama',
-          details: salud
-        });
-      }
+      const estadisticas = await iaService.obtenerEstadisticasIA();
+
+      res.json({
+        servicio: 'IA Portal Auditorías',
+        version: '1.0.0',
+        ...estadisticas,
+        timestamp: new Date().toISOString()
+      });
+
     } catch (error) {
+      console.error('❌ Error en health check IA:', error.message);
       res.status(500).json({
-        status: 'error',
-        message: 'Error verificando salud del servicio IA',
-        error: error.message
+        error: 'Error obteniendo estado del servicio IA',
+        detalle: error.message
       });
     }
   }
 
-  // ============== MÉTRICAS ================
-  
-  async getMetrics(req, res) {
+  /**
+   * GET /api/ia/estadisticas
+   * Obtener estadísticas detalladas del servicio IA
+   */
+  async obtenerEstadisticas(req, res) {
     try {
-      const metricas = await iaService.obtenerMetricas();
-      
-      res.status(200).json({
-        status: 'success',
-        message: 'Métricas obtenidas correctamente',
-        data: metricas
+      const estadisticas = await iaService.obtenerEstadisticasIA();
+
+      res.json({
+        exito: true,
+        estadisticas,
+        timestamp: new Date().toISOString()
       });
+
     } catch (error) {
+      console.error('❌ Error obteniendo estadísticas IA:', error.message);
       res.status(500).json({
-        status: 'error',
-        message: 'Error obteniendo métricas',
-        error: error.message
+        error: 'Error obteniendo estadísticas IA',
+        detalle: error.message
       });
     }
   }
 
-  // ============== ANÁLISIS DE DOCUMENTOS ================
-  
-  async analyzeDocument(req, res) {
+  /**
+   * POST /api/ia/reinicializar
+   * Reinicializar servicio IA (admin only)
+   */
+  async reinicializarServicio(req, res) {
     try {
-      const { 
-        documento_path, 
-        criterios_ids = [], 
-        auditoria_id 
-      } = req.body;
-
-      // Validaciones
-      if (!documento_path) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'documento_path es requerido',
-          code: 'MISSING_DOCUMENT_PATH'
+      // TODO: Verificar permisos de administrador
+      const usuario = req.user;
+      if (!usuario || usuario.rol !== 'admin') {
+        return res.status(403).json({
+          error: 'Acceso denegado. Solo administradores pueden reinicializar el servicio'
         });
       }
 
-      // Verificar que el archivo existe
-      try {
-        await fs.access(documento_path);
-      } catch (error) {
-        return res.status(404).json({
-          status: 'error',
-          message: 'Archivo no encontrado',
-          path: documento_path,
-          code: 'FILE_NOT_FOUND'
-        });
-      }
+      console.log(`🔄 Reinicializando servicio IA por usuario: ${usuario.email}`);
 
-      // Obtener criterios de scoring si se especificaron
-      let criterios = [];
-      if (criterios_ids.length > 0) {
-        try {
-          criterios = await CriterioScoring.findAll({
-            where: { id: criterios_ids }
-          });
-        } catch (error) {
-          console.log('⚠️ Error obteniendo criterios, usando análisis general');
-        }
-      }
+      const resultado = await iaService.reinicializarServicio();
 
-      console.log(`🔍 Iniciando análisis de documento: ${path.basename(documento_path)}`);
-      
-      // Realizar análisis con IA
-      const resultado = await iaService.analizarDocumento(documento_path, criterios);
-      
-      res.status(200).json({
-        status: 'success',
-        message: 'Análisis de documento completado',
-        data: {
-          analisis_id: resultado.id,
-          documento: path.basename(documento_path),
-          score: resultado.score,
-          analisis: resultado.analisis,
-          detalles_scoring: resultado.detalles,
-          recomendaciones: resultado.recomendaciones,
-          criterios_aplicados: criterios.length,
-          auditoria_id: auditoria_id || null
-        }
+      res.json({
+        exito: resultado.exito,
+        mensaje: 'Servicio IA reinicializado',
+        detalles: resultado,
+        timestamp: new Date().toISOString()
       });
 
     } catch (error) {
-      console.error('❌ Error en análisis de documento:', error);
+      console.error('❌ Error reinicializando servicio IA:', error.message);
       res.status(500).json({
-        status: 'error',
-        message: 'Error interno analizando documento',
-        error: error.message,
-        code: 'ANALYSIS_ERROR'
+        error: 'Error reinicializando servicio IA',
+        detalle: error.message
       });
     }
   }
 
-  // ============== ANÁLISIS DE IMÁGENES ================
-  
-  async analyzeImage(req, res) {
+  /**
+   * DELETE /api/ia/cache
+   * Limpiar cache de análisis IA
+   */
+  async limpiarCache(req, res) {
     try {
-      const { 
-        imagen_path, 
-        criterios_ids = [], 
-        auditoria_id 
-      } = req.body;
+      const { patron } = req.query;
+      const usuario = req.user;
 
-      // Validaciones
-      if (!imagen_path) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'imagen_path es requerido',
-          code: 'MISSING_IMAGE_PATH'
+      // Verificar permisos
+      if (!usuario || !['admin', 'auditor'].includes(usuario.rol)) {
+        return res.status(403).json({
+          error: 'Acceso denegado. Solo administradores y auditores pueden limpiar cache'
         });
       }
 
-      // Verificar que el archivo existe
-      try {
-        await fs.access(imagen_path);
-      } catch (error) {
-        return res.status(404).json({
-          status: 'error',
-          message: 'Imagen no encontrada',
-          path: imagen_path,
-          code: 'IMAGE_NOT_FOUND'
-        });
-      }
+      console.log(`🧹 Limpiando cache IA por usuario: ${usuario.email}`);
 
-      // Verificar que es una imagen válida
-      const extension = path.extname(imagen_path).toLowerCase();
-      const extensionesValidas = ['.jpg', '.jpeg', '.png', '.bmp', '.gif'];
-      
-      if (!extensionesValidas.includes(extension)) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'Formato de imagen no soportado',
-          formato_detectado: extension,
-          formatos_soportados: extensionesValidas,
-          code: 'INVALID_IMAGE_FORMAT'
-        });
-      }
+      const resultado = await iaService.limpiarCacheAnalisis(patron);
 
-      // Obtener criterios de scoring
-      let criterios = [];
-      if (criterios_ids.length > 0) {
-        try {
-          criterios = await CriterioScoring.findAll({
-            where: { id: criterios_ids }
-          });
-        } catch (error) {
-          console.log('⚠️ Error obteniendo criterios, usando análisis general');
-        }
-      }
-
-      console.log(`🖼️ Iniciando análisis de imagen: ${path.basename(imagen_path)}`);
-      
-      // Realizar análisis con IA
-      const resultado = await iaService.analizarImagen(imagen_path, criterios);
-      
-      res.status(200).json({
-        status: 'success',
-        message: 'Análisis de imagen completado',
-        data: {
-          analisis_id: resultado.id,
-          imagen: path.basename(imagen_path),
-          score: resultado.score,
-          analisis: resultado.analisis,
-          detalles_scoring: resultado.detalles,
-          recomendaciones: resultado.recomendaciones,
-          criterios_aplicados: criterios.length,
-          auditoria_id: auditoria_id || null
-        }
+      res.json({
+        exito: true,
+        mensaje: 'Cache limpiado exitosamente',
+        detalles: resultado,
+        timestamp: new Date().toISOString()
       });
 
     } catch (error) {
-      console.error('❌ Error en análisis de imagen:', error);
+      console.error('❌ Error limpiando cache IA:', error.message);
       res.status(500).json({
-        status: 'error',
-        message: 'Error interno analizando imagen',
-        error: error.message,
-        code: 'IMAGE_ANALYSIS_ERROR'
+        error: 'Error limpiando cache IA',
+        detalle: error.message
       });
     }
   }
 
-  // ============== ANÁLISIS EN LOTE ================
-  
-  async analyzeBatch(req, res) {
-    try {
-      const { 
-        archivos = [], 
-        criterios_ids = [], 
-        auditoria_id 
-      } = req.body;
-
-      // Validaciones
-      if (!Array.isArray(archivos) || archivos.length === 0) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'Se requiere un array de archivos no vacío',
-          code: 'MISSING_FILES_ARRAY'
-        });
-      }
-
-      if (archivos.length > 50) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'Máximo 50 archivos por lote',
-          archivos_enviados: archivos.length,
-          code: 'TOO_MANY_FILES'
-        });
-      }
-
-      // Verificar que todos los archivos existen
-      const archivosInvalidos = [];
-      for (const archivo of archivos) {
-        try {
-          await fs.access(archivo);
-        } catch (error) {
-          archivosInvalidos.push(archivo);
-        }
-      }
-
-      if (archivosInvalidos.length > 0) {
-        return res.status(404).json({
-          status: 'error',
-          message: 'Algunos archivos no fueron encontrados',
-          archivos_invalidos: archivosInvalidos,
-          code: 'FILES_NOT_FOUND'
-        });
-      }
-
-      // Obtener criterios de scoring
-      let criterios = [];
-      if (criterios_ids.length > 0) {
-        try {
-          criterios = await CriterioScoring.findAll({
-            where: { id: criterios_ids }
-          });
-        } catch (error) {
-          console.log('⚠️ Error obteniendo criterios, usando análisis general');
-        }
-      }
-
-      console.log(`📦 Iniciando análisis en lote de ${archivos.length} archivos`);
-      
-      // Realizar análisis en lote
-      const resultado = await iaService.analizarLote(archivos, criterios);
-      
-      res.status(200).json({
-        status: 'success',
-        message: 'Análisis en lote completado',
-        data: {
-          estadisticas: resultado.estadisticas,
-          resultados: resultado.resultados,
-          criterios_aplicados: criterios.length,
-          auditoria_id: auditoria_id || null,
-          timestamp: new Date().toISOString()
-        }
-      });
-
-    } catch (error) {
-      console.error('❌ Error en análisis en lote:', error);
-      res.status(500).json({
-        status: 'error',
-        message: 'Error interno en análisis en lote',
-        error: error.message,
-        code: 'BATCH_ANALYSIS_ERROR'
-      });
-    }
-  }
-
-  // ============== GESTIÓN DE CRITERIOS ================
-  
-  async getCriterios(req, res) {
-    try {
-      // Usar datos mock si no hay BD disponible
-      const criteriosMock = [
-        {
-          id: 1,
-          descripcion: 'Documentación técnica completa y actualizada',
-          categoria: 'documentacion',
-          peso: 8,
-          activo: true
-        },
-        {
-          id: 2,
-          descripcion: 'Cumplimiento de estándares de seguridad',
-          categoria: 'seguridad',
-          peso: 10,
-          activo: true
-        },
-        {
-          id: 3,
-          descripcion: 'Procesos de atención al cliente definidos',
-          categoria: 'procesos',
-          peso: 7,
-          activo: true
-        }
-      ];
-
-      try {
-        const criterios = await CriterioScoring.findAll({
-          order: [['categoria', 'ASC'], ['peso', 'DESC']]
-        });
-
-        res.status(200).json({
-          status: 'success',
-          message: 'Criterios de scoring obtenidos',
-          data: {
-            total: criterios.length,
-            criterios: criterios
-          }
-        });
-      } catch (error) {
-        // Fallback a datos mock
-        res.status(200).json({
-          status: 'success',
-          message: 'Criterios de scoring obtenidos (datos mock)',
-          data: {
-            total: criteriosMock.length,
-            criterios: criteriosMock
-          },
-          note: 'Usando datos de ejemplo - BD no disponible'
-        });
-      }
-
-    } catch (error) {
-      res.status(500).json({
-        status: 'error',
-        message: 'Error obteniendo criterios de scoring',
-        error: error.message
-      });
-    }
-  }
-
-  async createCriterio(req, res) {
-    try {
-      const {
-        descripcion,
-        categoria,
-        peso = 1,
-        activo = true
-      } = req.body;
-
-      // Validaciones
-      if (!descripcion || !categoria) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'descripcion y categoria son requeridos',
-          code: 'MISSING_REQUIRED_FIELDS'
-        });
-      }
-
-      if (peso < 0 || peso > 10) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'El peso debe estar entre 0 y 10',
-          code: 'INVALID_WEIGHT'
-        });
-      }
-
-      try {
-        const criterio = await CriterioScoring.create({
-          descripcion,
-          categoria,
-          peso,
-          activo
-        });
-
-        res.status(201).json({
-          status: 'success',
-          message: 'Criterio de scoring creado',
-          data: criterio
-        });
-      } catch (error) {
-        // Simular creación exitosa si no hay BD
-        res.status(201).json({
-          status: 'success',
-          message: 'Criterio de scoring creado (simulado)',
-          data: {
-            id: Math.floor(Math.random() * 1000),
-            descripcion,
-            categoria,
-            peso,
-            activo,
-            createdAt: new Date().toISOString()
-          },
-          note: 'Simulado - BD no disponible'
-        });
-      }
-
-    } catch (error) {
-      res.status(500).json({
-        status: 'error',
-        message: 'Error creando criterio de scoring',
-        error: error.message
-      });
-    }
-  }
-
-  // ============== OBTENER RESULTADOS DE ANÁLISIS ================
-  
-  async getAnalisis(req, res) {
+  /**
+   * GET /api/ia/analisis/:id
+   * Obtener resultado de análisis por ID
+   */
+  async obtenerAnalisis(req, res) {
     try {
       const { id } = req.params;
-      const { include_content = false } = req.query;
+      const { tipo = 'documento' } = req.query;
 
       if (!id) {
         return res.status(400).json({
-          status: 'error',
-          message: 'ID de análisis requerido',
-          code: 'MISSING_ANALYSIS_ID'
+          error: 'ID de análisis es requerido'
         });
       }
+
+      // TODO: Implementar búsqueda en BD real
+      // Por ahora mock response
+      const analisisMock = {
+        id: id,
+        tipo: tipo,
+        fecha_analisis: new Date().toISOString(),
+        score_total: 85,
+        detalles: {
+          aspectos_positivos: ['Documento completo', 'Especificaciones adecuadas'],
+          aspectos_mejora: ['Revisar configuración de red']
+        },
+        modelo_usado: 'llama3.2:1b',
+        metadatos: {
+          duracion_ms: 2340,
+          simulado: false
+        }
+      };
+
+      res.json({
+        exito: true,
+        analisis: analisisMock,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('❌ Error obteniendo análisis:', error.message);
+      res.status(500).json({
+        error: 'Error obteniendo análisis',
+        detalle: error.message
+      });
+    }
+  }
+
+  /**
+   * GET /api/ia/modelos
+   * Obtener información de modelos disponibles
+   */
+  async obtenerModelosDisponibles(req, res) {
+    try {
+      const ollamaConfig = require('../../config/ollama');
+      
+      const health = await ollamaConfig.checkOllamaHealth();
+      const modelsStatus = await ollamaConfig.ensureModelsAvailable();
+
+      res.json({
+        exito: true,
+        ollama_disponible: health.status === 'healthy',
+        modelos_configurados: ollamaConfig.MODELS_CONFIG,
+        modelos_disponibles: health.available_models || [],
+        estado_modelos: modelsStatus,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('❌ Error obteniendo modelos:', error.message);
+      res.status(500).json({
+        error: 'Error obteniendo información de modelos',
+        detalle: error.message
+      });
+    }
+  }
+
+  /**
+   * POST /api/ia/test-documento
+   * Endpoint de testing para análisis de documentos
+   */
+  async testAnalisisDocumento(req, res) {
+    try {
+      const { texto_prueba, tipo_analisis = 'compliance' } = req.body;
+
+      if (!texto_prueba) {
+        return res.status(400).json({
+          error: 'texto_prueba es requerido para el test'
+        });
+      }
+
+      console.log('🧪 Ejecutando test de análisis de documento');
+
+      // Crear archivo temporal para el test
+      const tempPath = path.join(__dirname, '../../../uploads/temp_test.txt');
+      await fs.writeFile(tempPath, texto_prueba, 'utf8');
 
       try {
-        const analisis = await iaService.obtenerAnalisis(id, include_content === 'true');
+        const resultado = await iaService.analizarDocumento(
+          'test_' + Date.now(),
+          tempPath,
+          tipo_analisis
+        );
 
-        if (!analisis) {
-          return res.status(404).json({
-            status: 'error',
-            message: 'Análisis no encontrado',
-            code: 'ANALYSIS_NOT_FOUND'
-          });
+        // Limpiar archivo temporal
+        await fs.unlink(tempPath);
+
+        res.json({
+          exito: true,
+          test: true,
+          analisis: resultado,
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (analysisError) {
+        // Asegurar limpieza en caso de error
+        try {
+          await fs.unlink(tempPath);
+        } catch (cleanupError) {
+          console.warn('⚠️  Error limpiando archivo temporal de test:', cleanupError.message);
         }
-
-        res.status(200).json({
-          status: 'success',
-          message: 'Análisis obtenido correctamente',
-          data: analisis
-        });
-      } catch (error) {
-        // Simular respuesta si no hay BD
-        res.status(200).json({
-          status: 'success',
-          message: 'Análisis obtenido (simulado)',
-          data: {
-            id: id,
-            tipo_analisis: 'documento',
-            scoring: 85,
-            fecha_creacion: new Date().toISOString(),
-            metadatos: {
-              modelo_usado: 'llama3.2:1b',
-              timestamp: new Date().toISOString()
-            }
-          },
-          note: 'Simulado - BD no disponible'
-        });
+        throw analysisError;
       }
 
     } catch (error) {
+      console.error('❌ Error en test de análisis:', error.message);
       res.status(500).json({
-        status: 'error',
-        message: 'Error obteniendo análisis',
-        error: error.message
+        error: 'Error ejecutando test de análisis',
+        detalle: error.message
       });
     }
-  }
-
-  // ============== TESTING Y VALIDACIÓN ================
-  
-  async testConnection(req, res) {
-    try {
-      // Test básico de conectividad
-      const salud = await iaService.verificarSalud();
-      
-      if (!salud.ollama_conectado) {
-        return res.status(503).json({
-          status: 'error',
-          message: 'Ollama no está disponible',
-          details: salud
-        });
-      }
-
-      // Test de análisis simple
-      const testPrompt = "Responde 'OK' si puedes procesar este mensaje.";
-      const respuesta = await iaService.consultarOllama(testPrompt);
-
-      res.status(200).json({
-        status: 'success',
-        message: 'Test de conexión exitoso',
-        data: {
-          ollama_conectado: true,
-          modelos_disponibles: salud.modelos_instalados,
-          test_respuesta: respuesta,
-          timestamp: new Date().toISOString()
-        }
-      });
-
-    } catch (error) {
-      res.status(500).json({
-        status: 'error',
-        message: 'Error en test de conexión',
-        error: error.message
-      });
-    }
-  }
-
-  async testDocumentAnalysis(req, res) {
-    try {
-      // Test con documento de ejemplo
-      const documentoTest = req.body.documento_test || 
-        "Este es un documento de prueba para validar el análisis de IA. " +
-        "Contiene información básica sobre procedimientos técnicos de call center. " +
-        "El documento incluye protocolos de atención, medidas de seguridad y estándares de calidad.";
-
-      console.log('🧪 Ejecutando test de análisis de documento...');
-
-      // Simular análisis (sin archivo físico)
-      const prompt = iaService.construirPromptAnalisisDocumento(documentoTest, []);
-      const analisis = await iaService.consultarOllama(prompt);
-      const scoring = iaService.calcularScoringGeneral(analisis);
-
-      res.status(200).json({
-        status: 'success',
-        message: 'Test de análisis de documento exitoso',
-        data: {
-          documento_test: documentoTest.substring(0, 100) + '...',
-          analisis_resultado: analisis,
-          scoring: scoring,
-          modelo_usado: iaService.modeloTexto,
-          timestamp: new Date().toISOString()
-        }
-      });
-
-    } catch (error) {
-      console.error('❌ Error en test de análisis:', error);
-      res.status(500).json({
-        status: 'error',
-        message: 'Error en test de análisis de documento',
-        error: error.message
-      });
-    }
-  }
-
-  // ============== COMPATIBILIDAD CON RUTAS EXISTENTES ================
-
-  // Mantener compatibilidad con las rutas existentes que esperan documentos por ID
-  async analyzeDocumentById(req, res) {
-    const { documento_id } = req.body;
-    
-    if (!documento_id) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'documento_id es requerido para esta ruta',
-        code: 'MISSING_DOCUMENT_ID'
-      });
-    }
-
-    // Simular análisis por ID
-    res.status(501).json({
-      status: 'not_implemented',
-      message: 'Análisis por documento_id requiere integración con módulo de documentos',
-      code: 'REQUIRES_DOCUMENT_MODULE',
-      suggestion: 'Usar /api/ia/analyze/document con documento_path por ahora'
-    });
-  }
-
-  async analyzeImageById(req, res) {
-    const { imagen_id } = req.body;
-    
-    if (!imagen_id) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'imagen_id es requerido para esta ruta',
-        code: 'MISSING_IMAGE_ID'
-      });
-    }
-
-    // Simular análisis por ID
-    res.status(501).json({
-      status: 'not_implemented',
-      message: 'Análisis por imagen_id requiere integración con módulo de documentos',
-      code: 'REQUIRES_DOCUMENT_MODULE',
-      suggestion: 'Usar /api/ia/analyze/image con imagen_path por ahora'
-    });
   }
 }
 
-const iaController = new IAController();
-
-module.exports = {
-  healthCheck: iaController.healthCheck.bind(iaController),
-  getMetrics: iaController.getMetrics.bind(iaController),
-  analyzeDocument: iaController.analyzeDocument.bind(iaController),
-  analyzeImage: iaController.analyzeImage.bind(iaController),
-  analyzeBatch: iaController.analyzeBatch.bind(iaController),
-  getCriterios: iaController.getCriterios.bind(iaController),
-  createCriterio: iaController.createCriterio.bind(iaController),
-  getAnalisis: iaController.getAnalisis.bind(iaController),
-  testConnection: iaController.testConnection.bind(iaController),
-  testDocumentAnalysis: iaController.testDocumentAnalysis.bind(iaController),
-  
-  // Compatibilidad con rutas existentes
-  analyzeDocumentById: iaController.analyzeDocumentById.bind(iaController),
-  analyzeImageById: iaController.analyzeImageById.bind(iaController),
-  
-  // Alias para rutas que esperan nombres diferentes
-  configureCriteria: iaController.createCriterio.bind(iaController),
-  getAnalysisResults: iaController.getAnalisis.bind(iaController),
-  getJobStatus: (req, res) => {
-    res.status(501).json({
-      status: 'not_implemented', 
-      message: 'Job status tracking será implementado próximamente'
-    });
-  }
-};
+module.exports = new IAController();

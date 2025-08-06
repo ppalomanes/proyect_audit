@@ -1,319 +1,220 @@
-// client/src/components/layout/Header.jsx
-import { Fragment, useState } from 'react';
-import { Menu, Transition } from '@headlessui/react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Bars3Icon,
-  MagnifyingGlassIcon,
+// Header.jsx - Header con fondo sólido sin transparencia
+import React from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { 
+  Bars3Icon, 
   BellIcon,
-  ChatBubbleLeftRightIcon,
-  Cog6ToothIcon,
-  UserIcon,
-  PowerIcon,
-  QuestionMarkCircleIcon,
+  MagnifyingGlassIcon,
+  ChevronRightIcon,
+  HomeIcon,
+  PlusIcon,
   SunIcon,
   MoonIcon,
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
+import useNotificacionesStore from '../../domains/notificaciones/NotificacionesStore';
+import useAuthStore from '../../domains/auth/authStore';
+import { useTheme } from '../../contexts/ThemeContext';
 
-const Header = ({ user, onToggleSidebar, onLogout }) => {
+const Header = ({ onToggleSidebar, isMobile, sidebarOpen, sidebarCollapsed }) => {
+  const { noLeidas } = useNotificacionesStore();
+  const { user } = useAuthStore();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [notifications] = useState([
-    {
-      id: 1,
-      title: 'Nueva auditoría asignada',
-      description: 'TechCorp - Proceso iniciado',
-      time: '5 min ago',
-      unread: true,
-    },
-    {
-      id: 2,
-      title: 'ETL completado',
-      description: '245 equipos procesados exitosamente',
-      time: '2 horas ago',
-      unread: true,
-    },
-    {
-      id: 3,
-      title: 'Mensaje de proveedor',
-      description: 'ContactPlus requiere clarificación',
-      time: '1 día ago',
-      unread: false,
-    },
-  ]);
+  const location = useLocation();
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  // Generar breadcrumb basado en la ruta actual
+  const generateBreadcrumb = () => {
+    const path = location.pathname;
+    const segments = path.split('/').filter(Boolean);
+    
+    const breadcrumbMap = {
+      'dashboard': 'Dashboard',
+      'auditorias': 'Auditorías',
+      'etl': 'ETL Parque',
+      'ia-scoring': 'IA Scoring',
+      'chat': 'Mensajería',
+      'bitacora': 'Bitácora',
+      'reportes': 'Reportes',
+      'versiones': 'Versiones',
+      'notificaciones': 'Notificaciones',
+      'configuracion': 'Configuración',
+      'nueva': 'Nueva Auditoría',
+      'procesar': 'Procesar ETL',
+      'documentos': 'Análisis Documentos',
+      'imagenes': 'Análisis Imágenes',
+    };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      // Implement search functionality
-      console.log('Searching for:', searchQuery);
+    const breadcrumbs = [
+      { label: 'Inicio', href: '/dashboard', icon: HomeIcon }
+    ];
+
+    let currentPath = '';
+    segments.forEach((segment, index) => {
+      currentPath += '/' + segment;
+      const label = breadcrumbMap[segment] || segment;
+      
+      breadcrumbs.push({
+        label: label.charAt(0).toUpperCase() + label.slice(1),
+        href: currentPath,
+        isLast: index === segments.length - 1
+      });
+    });
+
+    return breadcrumbs;
+  };
+
+  const breadcrumbs = generateBreadcrumb();
+
+  const cycleTheme = () => {
+    const themes = ['light', 'dark', 'corporate'];
+    const currentIndex = themes.indexOf(theme);
+    const nextIndex = (currentIndex + 1) % themes.length;
+    setTheme(themes[nextIndex]);
+  };
+
+  const getThemeIcon = () => {
+    switch (theme) {
+      case 'light':
+        return <SunIcon className="w-5 h-5" />;
+      case 'dark':
+        return <MoonIcon className="w-5 h-5" />;
+      case 'corporate':
+        return <BuildingOfficeIcon className="w-5 h-5" />;
+      default:
+        return <SunIcon className="w-5 h-5" />;
     }
   };
 
-  const handleProfileAction = (action) => {
-    switch (action) {
-      case 'profile':
-        navigate('/perfil');
-        break;
-      case 'settings':
-        navigate('/configuracion');
-        break;
-      case 'help':
-        window.open('/ayuda', '_blank');
-        break;
-      case 'logout':
-        onLogout();
-        navigate('/login');
-        break;
+  const getThemeLabel = () => {
+    switch (theme) {
+      case 'light':
+        return 'Claro';
+      case 'dark':
+        return 'Oscuro';
+      case 'corporate':
+        return 'Corporativo';
       default:
-        break;
+        return 'Claro';
     }
   };
 
   return (
-    <header className="fixed top-0 right-0 left-0 md:left-64 bg-gray-900/95 backdrop-blur-xl border-b border-gray-700/50 z-30 h-16">
-      <div className="flex items-center justify-between h-full px-4 md:px-6">
-        {/* Left Section */}
-        <div className="flex items-center space-x-4">
-          {/* Mobile Sidebar Toggle */}
-          <button
-            onClick={onToggleSidebar}
-            className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors md:hidden"
-          >
-            <Bars3Icon className="w-5 h-5" />
-          </button>
+    <header className="header-solid">
+      <div className="px-4 py-3">
+        <div className="flex items-center justify-between">
+          
+          {/* Left Section - Mobile menu + Breadcrumb */}
+          <div className="flex items-center space-x-4">
+            
+            {/* Mobile menu button */}
+            {isMobile && (
+              <button
+                onClick={onToggleSidebar}
+                className="p-2 rounded-lg bg-card hover-bg-card text-primary transition-all"
+                aria-label="Abrir menú"
+              >
+                <Bars3Icon className="w-5 h-5" />
+              </button>
+            )}
 
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="relative hidden md:block">
+            {/* Breadcrumb */}
+            <nav className="flex items-center space-x-2 text-sm">
+              {breadcrumbs.map((crumb, index) => (
+                <React.Fragment key={crumb.href}>
+                  {index > 0 && (
+                    <ChevronRightIcon className="w-4 h-4 text-muted" />
+                  )}
+                  
+                  {crumb.isLast ? (
+                    <span className="text-primary font-medium transition-theme">
+                      {crumb.label}
+                    </span>
+                  ) : (
+                    <Link
+                      to={crumb.href}
+                      className="flex items-center text-secondary hover:text-primary transition-theme"
+                    >
+                      {crumb.icon && <crumb.icon className="w-4 h-4 mr-1" />}
+                      {crumb.label}
+                    </Link>
+                  )}
+                </React.Fragment>
+              ))}
+            </nav>
+          </div>
+
+          {/* Center Section - Search */}
+          <div className="flex-1 max-w-xl mx-8 hidden md:block">
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
-              </div>
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted" />
               <input
                 type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="block w-64 pl-10 pr-3 py-2 border border-gray-700 rounded-lg bg-gray-800/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="Buscar auditorías, proveedores..."
+                className="w-full pl-10 pr-4 py-2 bg-card rounded-lg text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               />
-              {searchQuery && (
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                  <button
-                    type="submit"
-                    className="p-1 text-gray-400 hover:text-white transition-colors"
-                  >
-                    <kbd className="px-2 py-1 text-xs font-semibold text-gray-400 bg-gray-700 border border-gray-600 rounded">
-                      Enter
-                    </kbd>
-                  </button>
-                </div>
-              )}
             </div>
-          </form>
-        </div>
+          </div>
 
-        {/* Right Section */}
-        <div className="flex items-center space-x-3">
-          {/* Mobile Search Button */}
-          <button className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors md:hidden">
-            <MagnifyingGlassIcon className="w-5 h-5" />
-          </button>
+          {/* Right Section - Actions + Theme + Notifications + User */}
+          <div className="flex items-center space-x-3">
+            
+            {/* Nueva Auditoría Button */}
+            <button
+              onClick={() => navigate('/auditorias/nueva')}
+              className="hidden sm:flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all"
+            >
+              <PlusIcon className="w-4 h-4" />
+              <span className="text-sm font-medium">Nueva Auditoría</span>
+            </button>
 
-          {/* Notifications */}
-          <Menu as="div" className="relative">
-            <Menu.Button className="relative p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
+            {/* Theme Selector */}
+            <button
+              onClick={cycleTheme}
+              className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-card text-primary transition-all group"
+              title={`Cambiar tema (actual: ${getThemeLabel()})`}
+            >
+              <div className="transition-transform group-hover:scale-110">
+                {getThemeIcon()}
+              </div>
+              <span className="hidden lg:block text-sm font-medium">
+                {getThemeLabel()}
+              </span>
+            </button>
+
+            {/* Notifications */}
+            <button
+              onClick={() => navigate('/notificaciones')}
+              className="relative p-2 rounded-lg hover:bg-card text-primary transition-all"
+              title="Notificaciones"
+            >
               <BellIcon className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  {unreadCount > 9 ? '9+' : unreadCount}
+              {noLeidas > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {noLeidas > 9 ? '9+' : noLeidas}
                 </span>
               )}
-            </Menu.Button>
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
-            >
-              <Menu.Items className="absolute right-0 mt-2 w-80 bg-gray-800 border border-gray-700 rounded-lg shadow-lg py-2 max-h-96 overflow-y-auto">
-                <div className="px-4 py-3 border-b border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-white">Notificaciones</h3>
-                    {unreadCount > 0 && (
-                      <button className="text-xs text-blue-400 hover:text-blue-300">
-                        Marcar todas como leídas
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {notifications.map((notification) => (
-                    <Menu.Item key={notification.id}>
-                      {({ active }) => (
-                        <div
-                          className={`px-4 py-3 cursor-pointer transition-colors ${
-                            active ? 'bg-gray-700' : ''
-                          } ${notification.unread ? 'bg-gray-800/50' : ''}`}
-                        >
-                          <div className="flex items-start">
-                            <div className={`w-2 h-2 rounded-full mt-2 mr-3 ${
-                              notification.unread ? 'bg-blue-500' : 'bg-transparent'
-                            }`} />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-white">
-                                {notification.title}
-                              </p>
-                              <p className="text-xs text-gray-400 mt-1">
-                                {notification.description}
-                              </p>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {notification.time}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </Menu.Item>
-                  ))}
-                </div>
-                <div className="px-4 py-3 border-t border-gray-700">
-                  <button className="text-sm text-blue-400 hover:text-blue-300 font-medium">
-                    Ver todas las notificaciones
-                  </button>
-                </div>
-              </Menu.Items>
-            </Transition>
-          </Menu>
+            </button>
 
-          {/* Quick Chat */}
-          <button
-            onClick={() => navigate('/chat')}
-            className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
-          >
-            <ChatBubbleLeftRightIcon className="w-5 h-5" />
-          </button>
-
-          {/* User Menu */}
-          <Menu as="div" className="relative">
-            <Menu.Button className="flex items-center space-x-3 p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
-              <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full">
-                <span className="text-sm font-medium text-white">
-                  {user?.nombres?.charAt(0)?.toUpperCase() || 'U'}
+            {/* User Info */}
+            <div className="flex items-center space-x-3">
+              <div className="hidden md:block text-right">
+                <div className="text-sm font-medium text-primary transition-theme">
+                  {user?.nombres || 'Usuario'}
+                </div>
+                <div className="text-xs text-secondary transition-theme">
+                  {user?.rol || 'ADMIN'}
+                </div>
+              </div>
+              
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-medium">
+                  {user?.nombres ? user.nombres.charAt(0).toUpperCase() : 'U'}
                 </span>
               </div>
-              <div className="hidden md:block text-left">
-                <p className="text-sm font-medium text-white">
-                  {user?.nombres || 'Usuario'}
-                </p>
-                <p className="text-xs text-gray-400">
-                  {user?.rol || 'Sin rol'}
-                </p>
-              </div>
-            </Menu.Button>
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
-            >
-              <Menu.Items className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-lg py-2">
-                <div className="px-4 py-3 border-b border-gray-700">
-                  <p className="text-sm font-medium text-white">
-                    {user?.nombres} {user?.apellidos}
-                  </p>
-                  <p className="text-xs text-gray-400">{user?.email}</p>
-                  <div className="flex items-center mt-2">
-                    <span className="px-2 py-1 text-xs font-medium bg-blue-500/20 text-blue-400 rounded-full">
-                      {user?.rol}
-                    </span>
-                  </div>
-                </div>
-                
-                <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={() => handleProfileAction('profile')}
-                      className={`flex items-center w-full px-4 py-2 text-sm transition-colors ${
-                        active ? 'bg-gray-700 text-white' : 'text-gray-300'
-                      }`}
-                    >
-                      <UserIcon className="w-4 h-4 mr-3" />
-                      Mi Perfil
-                    </button>
-                  )}
-                </Menu.Item>
-
-                <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={() => handleProfileAction('settings')}
-                      className={`flex items-center w-full px-4 py-2 text-sm transition-colors ${
-                        active ? 'bg-gray-700 text-white' : 'text-gray-300'
-                      }`}
-                    >
-                      <Cog6ToothIcon className="w-4 h-4 mr-3" />
-                      Configuración
-                    </button>
-                  )}
-                </Menu.Item>
-
-                <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={() => handleProfileAction('help')}
-                      className={`flex items-center w-full px-4 py-2 text-sm transition-colors ${
-                        active ? 'bg-gray-700 text-white' : 'text-gray-300'
-                      }`}
-                    >
-                      <QuestionMarkCircleIcon className="w-4 h-4 mr-3" />
-                      Ayuda
-                    </button>
-                  )}
-                </Menu.Item>
-
-                <div className="border-t border-gray-700 my-2" />
-
-                <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={() => handleProfileAction('logout')}
-                      className={`flex items-center w-full px-4 py-2 text-sm transition-colors ${
-                        active ? 'bg-red-600 text-white' : 'text-red-400'
-                      }`}
-                    >
-                      <PowerIcon className="w-4 h-4 mr-3" />
-                      Cerrar Sesión
-                    </button>
-                  )}
-                </Menu.Item>
-              </Menu.Items>
-            </Transition>
-          </Menu>
-        </div>
-      </div>
-
-      {/* Mobile Search Bar */}
-      <div className="md:hidden border-t border-gray-700/50 p-4">
-        <form onSubmit={handleSearch} className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+            </div>
           </div>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-lg bg-gray-800/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-            placeholder="Buscar auditorías, proveedores..."
-          />
-        </form>
+        </div>
       </div>
     </header>
   );
